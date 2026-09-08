@@ -145,4 +145,4 @@ export default function GastoForm({ usuarioId, onGuardado }) {
       {mensaje && <p className={mensaje.tipo === 'error' ? 'msg-error' : 'msg-ok'}>{mensaje.texto}</p>}
     </form>
   )
-}
+} 
