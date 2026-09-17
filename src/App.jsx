@@ -3,6 +3,7 @@ import { supabase } from './supabaseClient'
 import Auth from './Auth'
 import GastoForm from './GastoForm'
 import GastoList from './GastoList'
+import Suscripciones from './Suscripciones'
 import './App.css'
 
 function App() {
@@ -41,6 +42,8 @@ function App() {
       <p className="email-usuario">{session.user.email}</p>
 
       <GastoForm usuarioId={session.user.id} onGuardado={() => setRefreshKey((k) => k + 1)} />
+
+      <Suscripciones usuarioId={session.user.id} refreshKey={refreshKey} onCambio={() => setRefreshKey((k) => k + 1)} />
 
       <GastoList usuarioId={session.user.id} refreshKey={refreshKey} />
 

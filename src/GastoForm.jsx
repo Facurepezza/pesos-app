@@ -9,8 +9,6 @@ export default function GastoForm({ usuarioId, onGuardado }) {
   const [categoria, setCategoria] = useState('')
   const [medioPago, setMedioPago] = useState('efectivo')
   const [tarjetaAlias, setTarjetaAlias] = useState('')
-  const [debitoAutomatico, setDebitoAutomatico] = useState(false)
-  const [proximoVencimiento, setProximoVencimiento] = useState('')
   const [guardando, setGuardando] = useState(false)
   const [mensaje, setMensaje] = useState(null)
 
@@ -75,8 +73,6 @@ export default function GastoForm({ usuarioId, onGuardado }) {
         monto: parseFloat(monto),
         fecha,
         medio_pago: medioPago,
-        debito_automatico: debitoAutomatico,
-        proximo_vencimiento: debitoAutomatico && proximoVencimiento ? proximoVencimiento : null,
       })
 
       if (error) throw error
@@ -88,8 +84,6 @@ export default function GastoForm({ usuarioId, onGuardado }) {
       setMonto('')
       setCategoria('')
       setTarjetaAlias('')
-      setDebitoAutomatico(false)
-      setProximoVencimiento('')
 
       if (onGuardado) onGuardado()
     } catch (err) {
@@ -110,7 +104,7 @@ export default function GastoForm({ usuarioId, onGuardado }) {
       <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} required />
 
       <label>Categoría</label>
-      <input type="text" value={categoria} onChange={(e) => setCategoria(e.target.value)} placeholder="Comida, transporte, suscripciones..." />
+      <input type="text" value={categoria} onChange={(e) => setCategoria(e.target.value)} placeholder="Comida, transporte, otros..." />
 
       <label>Medio de pago</label>
       <select value={medioPago} onChange={(e) => setMedioPago(e.target.value)}>
@@ -123,18 +117,6 @@ export default function GastoForm({ usuarioId, onGuardado }) {
         <>
           <label>Tarjeta</label>
           <input type="text" value={tarjetaAlias} onChange={(e) => setTarjetaAlias(e.target.value)} placeholder="Visa Santander, Naranja X..." />
-
-          <label className="checkbox-label">
-            <input type="checkbox" checked={debitoAutomatico} onChange={(e) => setDebitoAutomatico(e.target.checked)} />
-            Es un débito automático
-          </label>
-
-          {debitoAutomatico && (
-            <>
-              <label>Próximo vencimiento</label>
-              <input type="date" value={proximoVencimiento} onChange={(e) => setProximoVencimiento(e.target.value)} />
-            </>
-          )}
         </>
       )}
 
@@ -145,4 +127,4 @@ export default function GastoForm({ usuarioId, onGuardado }) {
       {mensaje && <p className={mensaje.tipo === 'error' ? 'msg-error' : 'msg-ok'}>{mensaje.texto}</p>}
     </form>
   )
-} 
+}

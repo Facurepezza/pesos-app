@@ -275,3 +275,52 @@ h1 {
   color: #14532D;
   margin-top: 10px;
 }
+.suscripciones {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid #EAF2EC;
+  padding-top: 16px;
+  margin-top: 16px;
+}
+
+.suscripciones h2 {
+  font-size: 18px;
+  color: #14532D;
+  margin: 0 0 12px;
+}
+
+.suscripcion-form {
+  display: flex;
+  flex-direction: column;
+  background: #EAF2EC;
+  padding: 14px;
+  border-radius: 10px;
+  margin-bottom: 16px;
+}
+
+.suscripcion-form label {
+  font-size: 12px;
+  color: #6B6B6B;
+  margin-top: 10px;
+  margin-bottom: 4px;
+}
+
+.suscripcion-form input {
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #DDD;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.suscripcion-form button {
+  margin-top: 14px;
+  padding: 10px;
+  border-radius: 8px;
+  border: none;
+  background: #14532D;
+  color: white;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+}

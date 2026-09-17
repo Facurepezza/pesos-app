@@ -39,7 +39,7 @@ export default function GastoList({ usuarioId, refreshKey }) {
 
       let query = supabase
         .from('gastos')
-        .select('id, monto, fecha, medio_pago, debito_automatico, proximo_vencimiento, categorias(nombre), tarjetas(alias)')
+        .select('id, monto, fecha, medio_pago, categorias(nombre), tarjetas(alias)')
         .eq('usuario_id', usuarioId)
         .order('fecha', { ascending: false })
 
@@ -138,10 +138,7 @@ export default function GastoList({ usuarioId, refreshKey }) {
                 <tr key={g.id}>
                   <td>{g.fecha}</td>
                   <td>{g.categorias?.nombre || '—'}</td>
-                  <td>
-                    {MEDIOS[g.medio_pago]}
-                    {g.debito_automatico && <span className="badge-db">DB</span>}
-                  </td>
+                  <td>{MEDIOS[g.medio_pago]}</td>
                   <td>{g.tarjetas?.alias || '—'}</td>
                   <td>${Number(g.monto).toFixed(2)}</td>
                 </tr>
@@ -153,4 +150,4 @@ export default function GastoList({ usuarioId, refreshKey }) {
       )}
     </div>
   )
-} 
+}
