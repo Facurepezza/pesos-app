@@ -4,12 +4,20 @@ import Auth from './Auth'
 import GastoForm from './GastoForm'
 import GastoList from './GastoList'
 import Suscripciones from './Suscripciones'
+import Logo from './Logo'
 import './App.css'
+
+const TABS = [
+  { id: 'cargar', label: 'Cargar' },
+  { id: 'gastos', label: 'Mis gastos' },
+  { id: 'suscripciones', label: 'Suscripciones' },
+]
 
 function App() {
   const [session, setSession] = useState(null)
   const [cargandoSesion, setCargandoSesion] = useState(true)
   const [refreshKey, setRefreshKey] = useState(0)
+  const [tab, setTab] = useState('cargar')
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -37,17 +45,48 @@ function App() {
   }
 
   return (
-    <div className="panel">
-      <h1>PESOS</h1>
-      <p className="email-usuario">{session.user.email}</p>
+    <div className="app-shell">
+      <header className="app-header">
+        <Logo size={40} />
+        <div className="app-header-text">
+          <h1>PESOS</h1>
+          <p>{session.user.email}</p>
+        </div>
+        <button className="btn-logout" onClick={handleLogout}>Salir</button>
+      </header>
+      <div className="ticket-tear"></div>
 
-      <GastoForm usuarioId={session.user.id} onGuardado={() => setRefreshKey((k) => k + 1)} />
+      <nav className="tab-nav">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            className={tab === t.id ? 'tab-btn activo' : 'tab-btn'}
+            onClick={() => setTab(t.id)}
+          >
+            {t.label}
+          </button>
+        ))}
+      </nav>
 
-      <Suscripciones usuarioId={session.user.id} refreshKey={refreshKey} onCambio={() => setRefreshKey((k) => k + 1)} />
-
-      <GastoList usuarioId={session.user.id} refreshKey={refreshKey} />
-
-      <button className="btn-logout" onClick={handleLogout}>Cerrar sesión</button>
+      <main className="ticket">
+        {tab === 'cargar' && (
+          <GastoForm
+            usuarioId={session.user.id}
+            onGuardado={() => {
+              setRefreshKey((k) => k + 1)
+              setTab('gastos')
+            }}
+          />
+        )}
+        {tab === 'gastos' && <GastoList usuarioId={session.user.id} refreshKey={refreshKey} />}
+        {tab === 'suscripciones' && (
+          <Suscripciones
+            usuarioId={session.user.id}
+            refreshKey={refreshKey}
+            onCambio={() => setRefreshKey((k) => k + 1)}
+          />
+        )}
+      </main>
     </div>
   )
 }

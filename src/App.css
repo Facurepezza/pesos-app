@@ -1,174 +1,201 @@
+:root {
+  --primary: #14532D;
+  --primary-dark: #0B3A1F;
+  --gold: #C9971F;
+  --bg: #F3F0E6;
+  --surface: #FFFFFF;
+  --surface-tint: #E7EEE8;
+  --ink: #24291F;
+  --ink-muted: #6B7263;
+  --danger: #A8342A;
+  --warning: #B8860B;
+}
+
 * {
   box-sizing: border-box;
 }
 
 body {
   margin: 0;
-  font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
-  background: #F5F5F0;
-  color: #1A1A1A;
+  font-family: 'IBM Plex Mono', monospace;
+  color: var(--ink);
+  background-color: var(--bg);
+  background-image: radial-gradient(circle, rgba(20, 83, 45, 0.07) 1px, transparent 1px);
+  background-size: 18px 18px;
 }
 
 #root {
   min-height: 100vh;
   display: flex;
-  align-items: center;
   justify-content: center;
+  padding: 32px 16px 64px;
 }
 
-.auth-container,
-.panel {
-  background: #FFFFFF;
-  border-radius: 16px;
-  padding: 40px;
-  width: 340px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-  text-align: center;
+h1, h2 {
+  font-family: 'Fraunces', serif;
+  color: var(--primary);
+  margin: 0;
 }
 
-h1 {
-  color: #14532D;
-  margin-bottom: 4px;
-  font-size: 32px;
+/* ---------- Shell (app logueada) ---------- */
+.app-shell {
+  width: 100%;
+  max-width: 480px;
 }
 
-.subtitulo {
-  color: #6B6B6B;
-  font-size: 13px;
-  margin-top: 0;
-  margin-bottom: 24px;
-}
-
-.tabs {
+.app-header {
+  background: var(--primary);
+  color: var(--surface);
+  border-radius: 10px 10px 0 0;
+  padding: 20px 22px;
   display: flex;
-  margin-bottom: 20px;
-  border-bottom: 2px solid #EAF2EC;
+  align-items: center;
+  gap: 14px;
 }
 
-.tab {
+.app-header-text {
   flex: 1;
-  background: none;
-  border: none;
-  padding: 10px;
-  font-size: 14px;
-  color: #6B6B6B;
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -2px;
 }
 
-.tab.activo {
-  color: #14532D;
-  border-bottom: 2px solid #14532D;
-  font-weight: bold;
+.app-header-text h1 {
+  color: var(--surface);
+  font-size: 26px;
+  letter-spacing: 0.01em;
 }
 
-.auth-form {
-  display: flex;
-  flex-direction: column;
-  text-align: left;
-}
-
-.auth-form label {
+.app-header-text p {
+  margin: 2px 0 0;
   font-size: 12px;
-  color: #6B6B6B;
-  margin-bottom: 4px;
-  margin-top: 12px;
+  color: var(--gold);
 }
 
-.auth-form input {
-  padding: 10px;
-  border-radius: 8px;
-  border: 1px solid #DDD;
-  font-size: 14px;
-}
-
-.auth-form button,
-.panel button {
-  margin-top: 20px;
-  padding: 12px;
-  border-radius: 8px;
-  border: none;
-  background: #14532D;
-  color: white;
-  font-size: 14px;
-  font-weight: bold;
+.btn-logout {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  color: var(--surface);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  padding: 7px 12px;
+  border-radius: 4px;
   cursor: pointer;
 }
 
-.auth-form button:disabled {
-  opacity: 0.6;
-  cursor: default;
+.btn-logout:hover {
+  border-color: var(--gold);
+  color: var(--gold);
 }
 
-.msg-error {
-  color: #B00020;
-  font-size: 13px;
-  margin-top: 14px;
+/* El "desgarro" del ticket: borde con muescas entre el header y el resto */
+.ticket-tear {
+  height: 14px;
+  background:
+    radial-gradient(circle at 7px 0, var(--bg) 7px, var(--primary) 7.5px);
+  background-size: 14px 14px;
+  background-repeat: repeat-x;
+  background-position: top;
 }
 
-.msg-ok {
-  color: #14532D;
-  font-size: 13px;
-  margin-top: 14px;
+/* ---------- Navegación por solapas ---------- */
+.tab-nav {
+  display: flex;
+  gap: 3px;
+  padding: 10px 10px 0;
 }
 
-.email-usuario {
-  font-weight: bold;
-  color: #D9A404;
+.tab-btn {
+  flex: 1;
+  padding: 10px 6px;
+  border: none;
+  background: var(--surface-tint);
+  color: var(--ink-muted);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11.5px;
+  font-weight: 600;
+  border-radius: 6px 6px 0 0;
+  cursor: pointer;
 }
 
-.nota {
-  font-size: 13px;
-  color: #6B6B6B;
-  margin: 16px 0 24px;
+.tab-btn.activo {
+  background: var(--surface);
+  color: var(--primary);
+  box-shadow: inset 0 2px 0 var(--gold);
 }
 
-.cargando {
-  color: #6B6B6B;
-}
-.panel {
-  width: 380px;
-  text-align: left;
+/* ---------- La tarjeta principal (el "ticket") ---------- */
+.ticket {
+  background: var(--surface);
+  border-radius: 0 8px 8px 8px;
+  padding: 24px 22px;
+  box-shadow: 3px 4px 0 rgba(20, 83, 45, 0.14);
 }
 
-.panel h1 {
+/* ---------- Pantalla de login (sin sesión) ---------- */
+.auth-shell {
+  width: 100%;
+  max-width: 400px;
+}
+
+.auth-brand {
   text-align: center;
+  margin-bottom: 22px;
 }
 
-.panel .email-usuario {
-  text-align: center;
-  margin-top: -8px;
-  margin-bottom: 24px;
+.auth-brand h1 {
+  font-size: 32px;
+  margin-top: 10px;
 }
 
-.gasto-form {
+.auth-brand .subtitulo {
+  font-size: 12px;
+  color: var(--ink-muted);
+  margin-top: 4px;
+}
+
+/* ---------- Formularios (gasto, suscripción, login) ---------- */
+.gasto-form, .suscripciones, .auth-form {
   display: flex;
   flex-direction: column;
-  border-top: 1px solid #EAF2EC;
-  padding-top: 16px;
 }
 
-.gasto-form h2 {
-  font-size: 18px;
-  color: #14532D;
-  margin: 0 0 12px;
+.suscripciones {
+  border-top: 2px dashed var(--surface-tint);
+  padding-top: 18px;
+  margin-top: 18px;
 }
 
-.gasto-form label {
-  font-size: 12px;
-  color: #6B6B6B;
+.gasto-form h2, .gasto-list h2, .suscripciones h2 {
+  font-size: 17px;
+  margin-bottom: 14px;
+}
+
+.gasto-form label, .suscripcion-form label, .auth-form label {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-muted);
   margin-top: 12px;
   margin-bottom: 4px;
 }
 
-.gasto-form input,
-.gasto-form select {
-  padding: 10px;
-  border-radius: 8px;
-  border: 1px solid #DDD;
-  font-size: 14px;
-  font-family: inherit;
+.gasto-form input, .gasto-form select,
+.suscripcion-form input,
+.auth-form input,
+.filtros input, .filtros select {
+  padding: 10px 11px;
+  border-radius: 4px;
+  border: 1.5px solid var(--surface-tint);
+  background: var(--surface);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13.5px;
+  color: var(--ink);
+}
+
+.gasto-form input:focus, .gasto-form select:focus,
+.suscripcion-form input:focus,
+.auth-form input:focus,
+.filtros input:focus, .filtros select:focus {
+  outline: none;
+  border-color: var(--gold);
 }
 
 .checkbox-label {
@@ -181,32 +208,72 @@ h1 {
   width: auto;
 }
 
-.gasto-form button {
-  margin-top: 20px;
+.gasto-form button, .suscripcion-form button, .auth-form button {
+  margin-top: 18px;
   padding: 12px;
-  border-radius: 8px;
+  border-radius: 4px;
   border: none;
-  background: #14532D;
-  color: white;
-  font-size: 14px;
-  font-weight: bold;
+  background: var(--primary);
+  color: var(--surface);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
   cursor: pointer;
 }
 
-.btn-logout {
-  margin-top: 20px;
-  width: 100%;
-  background: transparent !important;
-  color: #6B6B6B !important;
-  border: 1px solid #DDD !important;
-  font-weight: normal !important;
-}.filtros {
+.gasto-form button:hover, .suscripcion-form button:hover, .auth-form button:hover {
+  background: var(--primary-dark);
+}
+
+.gasto-form button:disabled, .suscripcion-form button:disabled, .auth-form button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.msg-error {
+  color: var(--danger);
+  font-size: 12.5px;
+  margin-top: 12px;
+}
+
+.msg-ok {
+  color: var(--primary);
+  font-size: 12.5px;
+  margin-top: 12px;
+}
+
+.cargando, .cargando-lista {
+  color: var(--ink-muted);
+  font-size: 13px;
+  text-align: center;
+  padding: 10px 0;
+}
+
+/* ---------- Suscripciones: formulario de alta ---------- */
+.suscripcion-form {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  background: #EAF2EC;
-  padding: 14px;
-  border-radius: 10px;
+  background: var(--surface-tint);
+  padding: 14px 16px;
+  border-radius: 6px;
+  margin-bottom: 18px;
+}
+
+/* ---------- Listado y filtros de gastos ---------- */
+.gasto-list {
+  border-top: 2px dashed var(--surface-tint);
+  padding-top: 18px;
+  margin-top: 18px;
+}
+
+.filtros {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--surface-tint);
+  padding: 14px 16px;
+  border-radius: 6px;
   margin-bottom: 16px;
 }
 
@@ -221,140 +288,113 @@ h1 {
   flex-direction: column;
 }
 
+.filtros label {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-muted);
+  margin-top: 10px;
+  margin-bottom: 4px;
+}
+
 .btn-secundario {
   margin-top: 14px;
   padding: 8px;
-  border-radius: 8px;
-  border: 1px solid #14532D;
+  border-radius: 4px;
+  border: 1.5px solid var(--primary);
   background: transparent;
-  color: #14532D;
-  font-size: 13px;
+  color: var(--primary);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11.5px;
   cursor: pointer;
-}
-
-.cargando-lista {
-  color: #6B6B6B;
-  font-size: 13px;
-  text-align: center;
-  padding: 12px 0;
 }
 
 .tabla-gastos {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: 12.5px;
 }
 
 .tabla-gastos th {
   text-align: left;
-  color: #6B6B6B;
-  font-size: 11px;
+  color: var(--ink-muted);
+  font-size: 10px;
   text-transform: uppercase;
-  border-bottom: 1px solid #EAF2EC;
+  letter-spacing: 0.05em;
+  border-bottom: 2px dashed var(--surface-tint);
   padding: 6px 4px;
 }
 
 .tabla-gastos td {
-  padding: 8px 4px;
-  border-bottom: 1px solid #F5F5F0;
-}
-
-.badge-db {
-  background: #D9A404;
-  color: #14532D;
-  font-size: 9px;
-  font-weight: bold;
-  padding: 1px 5px;
-  border-radius: 4px;
-  margin-left: 6px;
+  padding: 9px 4px;
+  border-bottom: 1px dashed var(--surface-tint);
 }
 
 .total-gastos {
   text-align: right;
-  font-weight: bold;
-  color: #14532D;
+  font-weight: 700;
+  color: var(--primary);
   margin-top: 10px;
-}
-.suscripciones {
-  display: flex;
-  flex-direction: column;
-  border-top: 1px solid #EAF2EC;
-  padding-top: 16px;
-  margin-top: 16px;
-}
-
-.suscripciones h2 {
-  font-size: 18px;
-  color: #14532D;
-  margin: 0 0 12px;
-}
-
-.suscripcion-form {
-  display: flex;
-  flex-direction: column;
-  background: #EAF2EC;
-  padding: 14px;
-  border-radius: 10px;
-  margin-bottom: 16px;
-}
-
-.suscripcion-form label {
-  font-size: 12px;
-  color: #6B6B6B;
-  margin-top: 10px;
-  margin-bottom: 4px;
-}
-
-.suscripcion-form input {
-  padding: 10px;
-  border-radius: 8px;
-  border: 1px solid #DDD;
   font-size: 14px;
-  font-family: inherit;
 }
 
-.suscripcion-form button {
-  margin-top: 14px;
-  padding: 10px;
-  border-radius: 8px;
-  border: none;
-  background: #14532D;
-  color: white;
-  font-size: 14px;
-  font-weight: bold;
-  cursor: pointer;
-}
+/* ---------- Vencimientos ---------- */
 .resumen-vencimientos {
-  background: #FCEFEA;
-  color: #B00020;
-  font-size: 13px;
-  font-weight: bold;
+  background: #F4E3E0;
+  color: var(--danger);
+  font-size: 12px;
+  font-weight: 600;
   padding: 10px 14px;
-  border-radius: 8px;
+  border-radius: 6px;
   margin-bottom: 12px;
 }
 
 .resumen-vencimientos.ok {
-  background: #EAF2EC;
-  color: #14532D;
+  background: var(--surface-tint);
+  color: var(--primary);
 }
 
 .badge-venc {
   display: block;
-  font-size: 10px;
-  font-weight: bold;
-  margin-top: 2px;
+  width: fit-content;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-top: 4px;
+  padding: 2px 6px;
+  border-radius: 3px;
 }
 
 .venc-urgente {
-  color: #B00020;
+  color: var(--danger);
+  border: 1.5px solid var(--danger);
+  transform: rotate(-2deg);
 }
 
 .venc-proximo {
-  color: #B8860B;
+  color: var(--warning);
+  border: 1.5px solid var(--warning);
 }
 
 .venc-normal {
-  color: #6B6B6B;
-  font-weight: normal;
+  color: var(--ink-muted);
+  border: 1px solid var(--surface-tint);
+  font-weight: 600;
+  text-transform: none;
+}
+
+@media (max-width: 480px) {
+  #root {
+    padding: 0;
+  }
+  .app-shell, .auth-shell {
+    max-width: 100%;
+  }
+  .app-header {
+    border-radius: 0;
+  }
+  .ticket {
+    border-radius: 0;
+  }
 }
