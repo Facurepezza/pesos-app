@@ -324,3 +324,37 @@ h1 {
   font-weight: bold;
   cursor: pointer;
 }
+.resumen-vencimientos {
+  background: #FCEFEA;
+  color: #B00020;
+  font-size: 13px;
+  font-weight: bold;
+  padding: 10px 14px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.resumen-vencimientos.ok {
+  background: #EAF2EC;
+  color: #14532D;
+}
+
+.badge-venc {
+  display: block;
+  font-size: 10px;
+  font-weight: bold;
+  margin-top: 2px;
+}
+
+.venc-urgente {
+  color: #B00020;
+}
+
+.venc-proximo {
+  color: #B8860B;
+}
+
+.venc-normal {
+  color: #6B6B6B;
+  font-weight: normal;
+}

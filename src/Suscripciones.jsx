@@ -3,6 +3,19 @@ import { supabase } from './supabaseClient'
 
 const hoy = () => new Date().toISOString().split('T')[0]
 
+function diasHasta(fechaISO) {
+  const hoyDate = new Date(hoy() + 'T00:00:00')
+  const fechaDate = new Date(fechaISO + 'T00:00:00')
+  return Math.round((fechaDate - hoyDate) / (1000 * 60 * 60 * 24))
+}
+
+function estadoVencimiento(dias) {
+  if (dias < 0) return { texto: `Vencido hace ${Math.abs(dias)} día${Math.abs(dias) === 1 ? '' : 's'}`, clase: 'venc-urgente' }
+  if (dias === 0) return { texto: 'Vence hoy', clase: 'venc-urgente' }
+  if (dias <= 7) return { texto: `Vence en ${dias} día${dias === 1 ? '' : 's'}`, clase: 'venc-proximo' }
+  return { texto: `Vence en ${dias} días`, clase: 'venc-normal' }
+}
+
 export default function Suscripciones({ usuarioId, refreshKey, onCambio }) {
   const [suscripciones, setSuscripciones] = useState([])
   const [cargando, setCargando] = useState(true)
@@ -114,26 +127,44 @@ export default function Suscripciones({ usuarioId, refreshKey, onCambio }) {
       ) : suscripciones.length === 0 ? (
         <p className="cargando-lista">Todavía no cargaste ninguna suscripción.</p>
       ) : (
-        <table className="tabla-gastos">
-          <thead>
-            <tr>
-              <th>Nombre</th>
-              <th>Monto estimado</th>
-              <th>Tarjeta</th>
-              <th>Próximo vencimiento</th>
-            </tr>
-          </thead>
-          <tbody>
-            {suscripciones.map((s) => (
-              <tr key={s.id}>
-                <td>{s.nombre}</td>
-                <td>${Number(s.monto_estimado).toFixed(2)}</td>
-                <td>{s.tarjetas?.alias || '—'}</td>
-                <td>{s.proximo_vencimiento}</td>
+        <>
+          {(() => {
+            const proximos = suscripciones.filter((s) => diasHasta(s.proximo_vencimiento) <= 7)
+            return proximos.length > 0 ? (
+              <p className="resumen-vencimientos">
+                Tenés {proximos.length} vencimiento{proximos.length === 1 ? '' : 's'} en los próximos 7 días.
+              </p>
+            ) : (
+              <p className="resumen-vencimientos ok">No tenés vencimientos próximos en los próximos 7 días.</p>
+            )
+          })()}
+          <table className="tabla-gastos">
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Monto estimado</th>
+                <th>Tarjeta</th>
+                <th>Próximo vencimiento</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {suscripciones.map((s) => {
+                const estado = estadoVencimiento(diasHasta(s.proximo_vencimiento))
+                return (
+                  <tr key={s.id}>
+                    <td>{s.nombre}</td>
+                    <td>${Number(s.monto_estimado).toFixed(2)}</td>
+                    <td>{s.tarjetas?.alias || '—'}</td>
+                    <td>
+                      {s.proximo_vencimiento}
+                      <span className={`badge-venc ${estado.clase}`}>{estado.texto}</span>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </>
       )}
     </div>
   )
