@@ -4,6 +4,7 @@ import Auth from './Auth'
 import GastoForm from './GastoForm'
 import GastoList from './GastoList'
 import Suscripciones from './Suscripciones'
+import AlertaBanner from './AlertaBanner'
 import Logo from './Logo'
 import './App.css'
 
@@ -55,6 +56,12 @@ function App() {
         <button className="btn-logout" onClick={handleLogout}>Salir</button>
       </header>
       <div className="ticket-tear"></div>
+
+      <AlertaBanner
+        usuarioId={session.user.id}
+        refreshKey={refreshKey}
+        onVerDetalle={() => setTab('suscripciones')}
+      />
 
       <nav className="tab-nav">
         {TABS.map((t) => (

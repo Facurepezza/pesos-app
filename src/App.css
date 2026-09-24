@@ -20,8 +20,14 @@ body {
   font-family: 'IBM Plex Mono', monospace;
   color: var(--ink);
   background-color: var(--bg);
-  background-image: radial-gradient(circle, rgba(20, 83, 45, 0.07) 1px, transparent 1px);
-  background-size: 18px 18px;
+  background-image:
+    radial-gradient(circle at 6% 10%, rgba(201, 151, 31, 0.22), transparent 40%),
+    radial-gradient(circle at 94% 88%, rgba(20, 83, 45, 0.20), transparent 42%),
+    url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="140" height="140" viewBox="0 0 140 140"><text x="15" y="35" font-family="Georgia, serif" font-weight="700" font-size="22" fill="%23C9971F" opacity="0.14" transform="rotate(-8 15 35)">$</text><text x="95" y="75" font-family="Georgia, serif" font-weight="700" font-size="16" fill="%2314532D" opacity="0.11" transform="rotate(10 95 75)">$</text><text x="40" y="115" font-family="Georgia, serif" font-weight="700" font-size="19" fill="%23C9971F" opacity="0.12" transform="rotate(-4 40 115)">$</text></svg>'),
+    radial-gradient(circle, rgba(20, 83, 45, 0.06) 1px, transparent 1px);
+  background-size: auto, auto, 140px 140px, 18px 18px;
+  background-attachment: fixed, fixed, fixed, fixed;
+  min-height: 100vh;
 }
 
 #root {
@@ -93,6 +99,26 @@ h1, h2 {
   background-size: 14px 14px;
   background-repeat: repeat-x;
   background-position: top;
+}
+
+/* ---------- Alerta global (Etapa 6) ---------- */
+.alerta-banner {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: var(--danger);
+  color: #FFF5F0;
+  border: none;
+  padding: 11px 16px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 2px;
+}
+
+.alerta-banner:hover {
+  background: #8E2B22;
 }
 
 /* ---------- Navegación por solapas ---------- */
@@ -338,7 +364,7 @@ h1, h2 {
   font-size: 14px;
 }
 
-/* ---------- Vencimientos ---------- */
+/* ---------- Vencimientos (Etapa 5) ---------- */
 .resumen-vencimientos {
   background: #F4E3E0;
   color: var(--danger);
@@ -384,6 +410,37 @@ h1, h2 {
   text-transform: none;
 }
 
+/* ---------- Avisos por WhatsApp / mail (Etapa 6) ---------- */
+.acciones-aviso {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.btn-aviso {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  padding: 3px 7px;
+  border-radius: 3px;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.btn-aviso-wsp {
+  background: #E7F5EC;
+  color: #1F7A42;
+  border: 1px solid #1F7A42;
+}
+
+.btn-aviso-mail {
+  background: var(--surface-tint);
+  color: var(--primary);
+  border: 1px solid var(--primary);
+}
+
 @media (max-width: 480px) {
   #root {
     padding: 0;
@@ -396,5 +453,99 @@ h1, h2 {
   }
   .ticket {
     border-radius: 0;
+  }
+}/* ---------- Landing (pantalla previa al login) ---------- */
+.landing {
+  width: 100%;
+  max-width: 920px;
+}
+
+.landing-hero {
+  background: var(--primary);
+  border-radius: 14px 14px 0 0;
+  padding: 48px 24px 40px;
+  text-align: center;
+  color: var(--surface);
+  position: relative;
+  overflow: hidden;
+}
+
+.landing-hero::before {
+  content: "";
+  position: absolute;
+  top: -90px;
+  right: -90px;
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  background: rgba(201, 151, 31, 0.16);
+}
+
+.landing-hero > * {
+  position: relative;
+}
+
+.landing-hero h1 {
+  color: var(--surface);
+  font-size: 42px;
+  margin-top: 14px;
+}
+
+.landing-tagline {
+  color: var(--gold);
+  font-size: 14.5px;
+  max-width: 460px;
+  margin: 10px auto 0;
+  line-height: 1.55;
+}
+
+.landing-features {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  background: var(--surface);
+}
+
+.feature-card {
+  padding: 22px 14px;
+  text-align: center;
+  border-right: 1px dashed var(--surface-tint);
+}
+
+.feature-card:last-child {
+  border-right: none;
+}
+
+.feature-card h3 {
+  font-family: 'Fraunces', serif;
+  font-size: 13.5px;
+  color: var(--primary);
+  margin: 10px 0 6px;
+}
+
+.feature-card p {
+  font-size: 10.5px;
+  color: var(--ink-muted);
+  line-height: 1.45;
+  margin: 0;
+}
+
+.auth-ticket-wrap {
+  max-width: 400px;
+  margin: 28px auto 0;
+}
+
+@media (max-width: 760px) {
+  .landing-features {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .feature-card {
+    border-right: none;
+    border-bottom: 1px dashed var(--surface-tint);
+  }
+  .feature-card:nth-child(2n) {
+    border-left: 1px dashed var(--surface-tint);
+  }
+  .landing-hero h1 {
+    font-size: 34px;
   }
 }

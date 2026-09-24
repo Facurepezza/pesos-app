@@ -10,10 +10,14 @@ function diasHasta(fechaISO) {
 }
 
 function estadoVencimiento(dias) {
-  if (dias < 0) return { texto: `Vencido hace ${Math.abs(dias)} día${Math.abs(dias) === 1 ? '' : 's'}`, clase: 'venc-urgente' }
-  if (dias === 0) return { texto: 'Vence hoy', clase: 'venc-urgente' }
-  if (dias <= 7) return { texto: `Vence en ${dias} día${dias === 1 ? '' : 's'}`, clase: 'venc-proximo' }
-  return { texto: `Vence en ${dias} días`, clase: 'venc-normal' }
+  if (dias < 0) return { texto: `Vencido hace ${Math.abs(dias)} día${Math.abs(dias) === 1 ? '' : 's'}`, clase: 'venc-urgente', avisar: true }
+  if (dias === 0) return { texto: 'Vence hoy', clase: 'venc-urgente', avisar: true }
+  if (dias <= 7) return { texto: `Vence en ${dias} día${dias === 1 ? '' : 's'}`, clase: 'venc-proximo', avisar: true }
+  return { texto: `Vence en ${dias} días`, clase: 'venc-normal', avisar: false }
+}
+
+function mensajeRecordatorio(s) {
+  return `Recordatorio PESOS: la suscripción "${s.nombre}" ($${Number(s.monto_estimado).toFixed(2)}) vence el ${s.proximo_vencimiento}.`
 }
 
 export default function Suscripciones({ usuarioId, refreshKey, onCambio }) {
@@ -150,6 +154,7 @@ export default function Suscripciones({ usuarioId, refreshKey, onCambio }) {
             <tbody>
               {suscripciones.map((s) => {
                 const estado = estadoVencimiento(diasHasta(s.proximo_vencimiento))
+                const mensajeAviso = mensajeRecordatorio(s)
                 return (
                   <tr key={s.id}>
                     <td>{s.nombre}</td>
@@ -158,6 +163,12 @@ export default function Suscripciones({ usuarioId, refreshKey, onCambio }) {
                     <td>
                       {s.proximo_vencimiento}
                       <span className={`badge-venc ${estado.clase}`}>{estado.texto}</span>
+                      {estado.avisar && (
+                        <div className="acciones-aviso">
+                          <a className="btn-aviso btn-aviso-wsp" target="_blank" rel="noopener noreferrer" href={`https://wa.me/?text=${encodeURIComponent(mensajeAviso)}`}>WhatsApp</a>
+                          <a className="btn-aviso btn-aviso-mail" href={`mailto:?subject=${encodeURIComponent('Recordatorio: ' + s.nombre)}&body=${encodeURIComponent(mensajeAviso)}`}>Mail</a>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 )
