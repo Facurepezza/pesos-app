@@ -5,6 +5,8 @@ import GastoForm from './GastoForm'
 import GastoList from './GastoList'
 import Suscripciones from './Suscripciones'
 import AlertaBanner from './AlertaBanner'
+import Dashboard from './Dashboard'
+import Tutorial from './Tutorial'
 import Logo from './Logo'
 import './App.css'
 
@@ -12,6 +14,7 @@ const TABS = [
   { id: 'cargar', label: 'Cargar' },
   { id: 'gastos', label: 'Mis gastos' },
   { id: 'suscripciones', label: 'Suscripciones' },
+  { id: 'resumen', label: 'Resumen' },
 ]
 
 function App() {
@@ -93,7 +96,10 @@ function App() {
             onCambio={() => setRefreshKey((k) => k + 1)}
           />
         )}
+        {tab === 'resumen' && <Dashboard key={refreshKey} />}
       </main>
+
+      <Tutorial />
     </div>
   )
 }

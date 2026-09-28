@@ -548,4 +548,27 @@ h1, h2 {
   .landing-hero h1 {
     font-size: 34px;
   }
+}/* ===== Etapa 7: editar, eliminar y dar de baja ===== */
+.tabla-scroll { width: 100%; overflow-x: auto; }
+.acciones-fila { display: flex; gap: 6px; flex-wrap: wrap; }
+.tabla-gastos .btn-accion {
+  width: auto; margin: 0; box-shadow: none;
+  font-family: 'IBM Plex Mono', monospace; font-size: .8rem;
+  padding: 5px 10px; border-radius: 5px; cursor: pointer;
+  background: #fff; border: 1.5px solid #14532D; color: #14532D;
+}
+.tabla-gastos .btn-accion:hover { background: #F3F0E6; }
+.tabla-gastos .btn-accion.peligro { border-color: #9a2a1d; color: #9a2a1d; }
+.tabla-gastos .btn-accion.guardar { background: #14532D; color: #fff; }
+.tabla-gastos .btn-accion:disabled { opacity: .5; cursor: not-allowed; }
+.tabla-gastos .input-tabla {
+  width: 100%; min-width: 90px; margin: 0; padding: 4px 6px;
+  font-family: 'IBM Plex Mono', monospace; font-size: .85rem;
+}
+.fila-editando { background: #fbf7e8; }
+.nota-ocultas { font-family: 'IBM Plex Mono', monospace; font-size: .85rem; color: #5b5f52; margin: 8px 0; }
+.nota-ocultas .btn-link {
+  width: auto; margin: 0 0 0 6px; padding: 0; box-shadow: none;
+  background: none; border: none; color: #14532D; text-decoration: underline;
+  cursor: pointer; font-family: inherit; font-size: inherit;
 }

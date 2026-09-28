@@ -7,6 +7,9 @@ const MEDIOS = {
   tarjeta: 'Tarjeta',
 }
 
+const pesos = (n) =>
+  new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 2 }).format(n || 0)
+
 export default function GastoList({ usuarioId, refreshKey }) {
   const [gastos, setGastos] = useState([])
   const [categorias, setCategorias] = useState([])
@@ -19,6 +22,13 @@ export default function GastoList({ usuarioId, refreshKey }) {
   const [categoriaId, setCategoriaId] = useState('')
   const [medioPago, setMedioPago] = useState('')
   const [tarjetaId, setTarjetaId] = useState('')
+
+  // Edición y borrado
+  const [recarga, setRecarga] = useState(0)
+  const [editandoId, setEditandoId] = useState(null)
+  const [edicion, setEdicion] = useState({})
+  const [guardando, setGuardando] = useState(false)
+  const [aviso, setAviso] = useState(null)
 
   useEffect(() => {
     async function cargarFiltros() {
@@ -39,7 +49,7 @@ export default function GastoList({ usuarioId, refreshKey }) {
 
       let query = supabase
         .from('gastos')
-        .select('id, monto, fecha, medio_pago, categorias(nombre), tarjetas(alias)')
+        .select('id, monto, fecha, medio_pago, categoria_id, tarjeta_id, categorias(nombre), tarjetas(alias)')
         .eq('usuario_id', usuarioId)
         .order('fecha', { ascending: false })
 
@@ -59,7 +69,7 @@ export default function GastoList({ usuarioId, refreshKey }) {
       setCargando(false)
     }
     cargarGastos()
-  }, [usuarioId, refreshKey, desde, hasta, categoriaId, medioPago, tarjetaId])
+  }, [usuarioId, refreshKey, recarga, desde, hasta, categoriaId, medioPago, tarjetaId])
 
   const total = gastos.reduce((acc, g) => acc + Number(g.monto), 0)
 
@@ -69,6 +79,66 @@ export default function GastoList({ usuarioId, refreshKey }) {
     setCategoriaId('')
     setMedioPago('')
     setTarjetaId('')
+  }
+
+  const empezarEdicion = (g) => {
+    setAviso(null)
+    setEditandoId(g.id)
+    setEdicion({
+      monto: g.monto,
+      fecha: g.fecha,
+      categoria_id: g.categoria_id || '',
+      medio_pago: g.medio_pago,
+      tarjeta_id: g.tarjeta_id || '',
+    })
+  }
+
+  const cancelarEdicion = () => {
+    setEditandoId(null)
+    setEdicion({})
+  }
+
+  const guardarEdicion = async () => {
+    const monto = parseFloat(edicion.monto)
+    if (!monto || monto <= 0) {
+      setAviso({ tipo: 'error', texto: 'El monto tiene que ser mayor a 0.' })
+      return
+    }
+    setGuardando(true)
+    const cambios = {
+      monto,
+      fecha: edicion.fecha,
+      categoria_id: edicion.categoria_id || null,
+      medio_pago: edicion.medio_pago,
+      tarjeta_id: edicion.medio_pago === 'tarjeta' ? (edicion.tarjeta_id || null) : null,
+    }
+    const { data, error } = await supabase.from('gastos').update(cambios).eq('id', editandoId).select('id')
+    setGuardando(false)
+
+    if (error) {
+      setAviso({ tipo: 'error', texto: error.message })
+    } else if (!data || data.length === 0) {
+      setAviso({ tipo: 'error', texto: 'No se pudo guardar el cambio. Revisá los permisos de la tabla en Supabase.' })
+    } else {
+      setAviso({ tipo: 'ok', texto: 'Gasto actualizado.' })
+      cancelarEdicion()
+      setRecarga((r) => r + 1)
+    }
+  }
+
+  const eliminarGasto = async (g) => {
+    const ok = window.confirm(`¿Eliminar el gasto de ${pesos(g.monto)} del ${g.fecha}? Esta acción no se puede deshacer.`)
+    if (!ok) return
+
+    const { data, error } = await supabase.from('gastos').delete().eq('id', g.id).select('id')
+    if (error) {
+      setAviso({ tipo: 'error', texto: error.message })
+    } else if (!data || data.length === 0) {
+      setAviso({ tipo: 'error', texto: 'No se pudo eliminar. Revisá los permisos de la tabla en Supabase.' })
+    } else {
+      setAviso({ tipo: 'ok', texto: 'Gasto eliminado.' })
+      setRecarga((r) => r + 1)
+    }
   }
 
   return (
@@ -117,35 +187,95 @@ export default function GastoList({ usuarioId, refreshKey }) {
       </div>
 
       {error && <p className="msg-error">{error}</p>}
+      {aviso && <p className={aviso.tipo === 'error' ? 'msg-error' : 'msg-ok'}>{aviso.texto}</p>}
+
       {cargando ? (
         <p className="cargando-lista">Cargando...</p>
       ) : gastos.length === 0 ? (
         <p className="cargando-lista">No hay gastos que coincidan con estos filtros.</p>
       ) : (
         <>
-          <table className="tabla-gastos">
-            <thead>
-              <tr>
-                <th>Fecha</th>
-                <th>Categoría</th>
-                <th>Medio de pago</th>
-                <th>Tarjeta</th>
-                <th>Monto</th>
-              </tr>
-            </thead>
-            <tbody>
-              {gastos.map((g) => (
-                <tr key={g.id}>
-                  <td>{g.fecha}</td>
-                  <td>{g.categorias?.nombre || '—'}</td>
-                  <td>{MEDIOS[g.medio_pago]}</td>
-                  <td>{g.tarjetas?.alias || '—'}</td>
-                  <td>${Number(g.monto).toFixed(2)}</td>
+          <div className="tabla-scroll">
+            <table className="tabla-gastos">
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Categoría</th>
+                  <th>Medio de pago</th>
+                  <th>Tarjeta</th>
+                  <th>Monto</th>
+                  <th>Acciones</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          <p className="total-gastos">Total: ${total.toFixed(2)}</p>
+              </thead>
+              <tbody>
+                {gastos.map((g) =>
+                  editandoId === g.id ? (
+                    <tr key={g.id} className="fila-editando">
+                      <td>
+                        <input className="input-tabla" type="date" value={edicion.fecha}
+                          onChange={(e) => setEdicion({ ...edicion, fecha: e.target.value })} />
+                      </td>
+                      <td>
+                        <select className="input-tabla" value={edicion.categoria_id}
+                          onChange={(e) => setEdicion({ ...edicion, categoria_id: e.target.value })}>
+                          <option value="">Sin categoría</option>
+                          {categorias.map((c) => (
+                            <option key={c.id} value={c.id}>{c.nombre}</option>
+                          ))}
+                        </select>
+                      </td>
+                      <td>
+                        <select className="input-tabla" value={edicion.medio_pago}
+                          onChange={(e) => setEdicion({ ...edicion, medio_pago: e.target.value })}>
+                          <option value="efectivo">Efectivo</option>
+                          <option value="mercado_pago">Mercado Pago</option>
+                          <option value="tarjeta">Tarjeta</option>
+                        </select>
+                      </td>
+                      <td>
+                        {edicion.medio_pago === 'tarjeta' ? (
+                          <select className="input-tabla" value={edicion.tarjeta_id}
+                            onChange={(e) => setEdicion({ ...edicion, tarjeta_id: e.target.value })}>
+                            <option value="">Elegí una</option>
+                            {tarjetas.map((t) => (
+                              <option key={t.id} value={t.id}>{t.alias}</option>
+                            ))}
+                          </select>
+                        ) : '—'}
+                      </td>
+                      <td>
+                        <input className="input-tabla" type="number" step="0.01" value={edicion.monto}
+                          onChange={(e) => setEdicion({ ...edicion, monto: e.target.value })} />
+                      </td>
+                      <td>
+                        <div className="acciones-fila">
+                          <button type="button" className="btn-accion guardar" onClick={guardarEdicion} disabled={guardando}>
+                            {guardando ? 'Guardando...' : 'Guardar'}
+                          </button>
+                          <button type="button" className="btn-accion" onClick={cancelarEdicion}>Cancelar</button>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    <tr key={g.id}>
+                      <td>{g.fecha}</td>
+                      <td>{g.categorias?.nombre || '—'}</td>
+                      <td>{MEDIOS[g.medio_pago]}</td>
+                      <td>{g.tarjetas?.alias || '—'}</td>
+                      <td>{pesos(g.monto)}</td>
+                      <td>
+                        <div className="acciones-fila">
+                          <button type="button" className="btn-accion" onClick={() => empezarEdicion(g)}>Editar</button>
+                          <button type="button" className="btn-accion peligro" onClick={() => eliminarGasto(g)}>Eliminar</button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                )}
+              </tbody>
+            </table>
+          </div>
+          <p className="total-gastos">Total: {pesos(total)}</p>
         </>
       )}
     </div>
