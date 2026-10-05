@@ -10,7 +10,7 @@ const VENTAJAS = [
 ]
 
 export default function Auth() {
-  const [modo, setModo] = useState(null) // null | 'login' | 'registro'
+  const [modo, setModo] = useState(null) // null | 'login' | 'registro' | 'recuperar'
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [cargando, setCargando] = useState(false)
@@ -20,7 +20,11 @@ export default function Auth() {
     e.preventDefault()
     setCargando(true)
     setMensaje(null)
-    if (modo === 'registro') {
+    if (modo === 'recuperar') {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin })
+      if (error) setMensaje({ tipo: 'error', texto: error.message })
+      else setMensaje({ tipo: 'ok', texto: 'Te mandamos un mail con un link para crear una contraseña nueva. Revisá también la carpeta de spam.' })
+    } else if (modo === 'registro') {
       const { error } = await supabase.auth.signUp({ email, password })
       if (error) setMensaje({ tipo: 'error', texto: error.message })
       else setMensaje({ tipo: 'ok', texto: 'Cuenta creada. Revisá tu mail para confirmarla y después iniciá sesión.' })
@@ -64,24 +68,36 @@ export default function Auth() {
           </>
         ) : (
           <form onSubmit={handleSubmit} className="pz-bienv-form">
-            <div className="pz-seg">
-              <button type="button" className={modo === 'login' ? 'on' : ''} onClick={() => { setModo('login'); setMensaje(null) }}>Iniciar sesión</button>
-              <button type="button" className={modo === 'registro' ? 'on' : ''} onClick={() => { setModo('registro'); setMensaje(null) }}>Crear cuenta</button>
-            </div>
+            {modo === 'recuperar' ? (
+              <div>
+                <h2 className="pz-h2">Recuperar contraseña</h2>
+                <p className="pz-sub" style={{ margin: '6px 0 0' }}>Poné tu mail y te mandamos un link para crear una nueva.</p>
+              </div>
+            ) : (
+              <div className="pz-seg">
+                <button type="button" className={modo === 'login' ? 'on' : ''} onClick={() => { setModo('login'); setMensaje(null) }}>Iniciar sesión</button>
+                <button type="button" className={modo === 'registro' ? 'on' : ''} onClick={() => { setModo('registro'); setMensaje(null) }}>Crear cuenta</button>
+              </div>
+            )}
             <div className="pz-campo">
               <label className="pz-label" htmlFor="a-mail">Mail</label>
               <input id="a-mail" className="pz-input" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
             </div>
-            <div className="pz-campo">
-              <label className="pz-label" htmlFor="a-pass">Contraseña</label>
-              <input id="a-pass" className="pz-input" type="password" autoComplete={modo === 'registro' ? 'new-password' : 'current-password'}
-                value={password} onChange={(e) => setPassword(e.target.value)} minLength={6} required />
-            </div>
+            {modo !== 'recuperar' && (
+              <div className="pz-campo">
+                <label className="pz-label" htmlFor="a-pass">Contraseña</label>
+                <input id="a-pass" className="pz-input" type="password" autoComplete={modo === 'registro' ? 'new-password' : 'current-password'}
+                  value={password} onChange={(e) => setPassword(e.target.value)} minLength={6} required />
+              </div>
+            )}
             {mensaje && <p className={mensaje.tipo === 'error' ? 'pz-error' : 'pz-ok'}>{mensaje.texto}</p>}
             <button type="submit" className="pz-btn pz-btn-primario pz-btn-grande" disabled={cargando}>
-              {cargando ? 'Un segundo...' : modo === 'registro' ? 'Crear cuenta' : 'Entrar'}
+              {cargando ? 'Un segundo...' : modo === 'recuperar' ? 'Mandarme el link' : modo === 'registro' ? 'Crear cuenta' : 'Entrar'}
             </button>
-            <button type="button" className="pz-link" onClick={() => { setModo(null); setMensaje(null) }}>Volver</button>
+            {modo === 'login' && (
+              <button type="button" className="pz-link" onClick={() => { setModo('recuperar'); setMensaje(null) }}>¿Te olvidaste la contraseña?</button>
+            )}
+            <button type="button" className="pz-link" onClick={() => { setModo(modo === 'recuperar' ? 'login' : null); setMensaje(null) }}>Volver</button>
           </form>
         )}
       </div>

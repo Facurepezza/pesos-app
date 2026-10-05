@@ -10,6 +10,8 @@ import Inicio from './Inicio'
 import CargarSheet from './CargarSheet'
 import Icono from './Iconos'
 import { ordenarDatos } from './ordenarDatos'
+import NuevaClave from './NuevaClave'
+import InstalarApp from './InstalarApp'
 import './App.css'
 import './theme.css'
 
@@ -28,14 +30,16 @@ function App() {
   const [tab, setTab] = useState('inicio')
   const [hoja, setHoja] = useState(null) // null | 'gasto' | 'ingreso'
   const [oculto, setOculto] = useState(false)
+  const [recuperando, setRecuperando] = useState(false)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
       setCargandoSesion(false)
     })
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((evento, session) => {
       setSession(session)
+      if (evento === 'PASSWORD_RECOVERY') setRecuperando(true)
     })
     return () => subscription.unsubscribe()
   }, [])
@@ -50,12 +54,14 @@ function App() {
   }, [uidSesion])
 
   if (cargandoSesion) return <p className="cargando">Cargando...</p>
+  if (recuperando) return <NuevaClave onListo={() => setRecuperando(false)} />
   if (!session) return <Auth />
 
   const uid = session.user.id
 
   return (
     <div className="pz">
+      {tab === 'inicio' && <InstalarApp />}
       {tab === 'inicio' && (
         <Inicio usuarioId={uid} email={session.user.email} refreshKey={refreshKey}
           oculto={oculto} setOculto={setOculto} onSalir={() => supabase.auth.signOut()} irA={setTab} />
