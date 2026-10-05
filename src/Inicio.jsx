@@ -101,8 +101,10 @@ export default function Inicio({ usuarioId, email, refreshKey, oculto, setOculto
           <button type="button" className="pz-icon-btn" onClick={() => setOculto(!oculto)} aria-label={oculto ? 'Mostrar montos' : 'Ocultar montos'}>
             <Icono nombre={oculto ? 'ojoNo' : 'ojo'} size={20} />
           </button>
-          <button type="button" className="pz-icon-btn" onClick={onSalir} aria-label="Cerrar sesión">
-            <Icono nombre="salir" size={20} />
+          <button type="button" className="pz-icon-btn" onClick={onSalir} aria-label="Mi perfil">
+            <span style={{ font: "800 18px 'Bricolage Grotesque', sans-serif", color: '#0F4D35', lineHeight: 1 }}>
+              {saludo ? saludo.charAt(0).toUpperCase() : '?'}
+            </span>
           </button>
         </div>
       </header>
