@@ -1,318 +1,218 @@
 import { useEffect, useState } from 'react'
 import { supabase } from './supabaseClient'
+import Avatar from './Avatar'
+import Icono from './Iconos'
+import { plata, hoyISO, diasHasta, sumarMeses } from './utils'
 
-const hoy = () => new Date().toISOString().split('T')[0]
-
-const pesos = (n) =>
-  new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 2 }).format(n || 0)
-
-// Las suscripciones vencidas hace más de estos días se ocultan de la lista (no se borran)
 const DIAS_PARA_OCULTAR = 30
 
-function diasHasta(fechaISO) {
-  const hoyDate = new Date(hoy() + 'T00:00:00')
-  const fechaDate = new Date(fechaISO + 'T00:00:00')
-  return Math.round((fechaDate - hoyDate) / (1000 * 60 * 60 * 24))
+function estado(dias, fecha) {
+  if (dias < 0) return { texto: `Vencida hace ${-dias} día${dias === -1 ? '' : 's'}`, clase: 'urg' }
+  if (dias === 0) return { texto: 'Vence hoy', clase: 'urg' }
+  if (dias <= 3) return { texto: `Vence en ${dias} día${dias === 1 ? '' : 's'}`, clase: 'urg' }
+  if (dias <= 7) return { texto: `Vence en ${dias} días`, clase: 'prox' }
+  const [, m, d] = fecha.split('-')
+  return { texto: `Vence el ${d}/${m}`, clase: 'ok' }
 }
 
-function estadoVencimiento(dias) {
-  if (dias < 0) return { texto: `Vencido hace ${Math.abs(dias)} día${Math.abs(dias) === 1 ? '' : 's'}`, clase: 'venc-urgente', avisar: true }
-  if (dias === 0) return { texto: 'Vence hoy', clase: 'venc-urgente', avisar: true }
-  if (dias <= 7) return { texto: `Vence en ${dias} día${dias === 1 ? '' : 's'}`, clase: 'venc-proximo', avisar: true }
-  return { texto: `Vence en ${dias} días`, clase: 'venc-normal', avisar: false }
-}
-
-function mensajeRecordatorio(s) {
-  return `Recordatorio PESOS: la suscripción "${s.nombre}" (${pesos(s.monto_estimado)}) vence el ${s.proximo_vencimiento}.`
-}
-
-export default function Suscripciones({ usuarioId, refreshKey, onCambio }) {
-  const [suscripciones, setSuscripciones] = useState([])
+export default function Suscripciones({ usuarioId, refreshKey, oculto, onCambio }) {
+  const [subs, setSubs] = useState([])
+  const [tarjetas, setTarjetas] = useState([])
   const [cargando, setCargando] = useState(true)
-
-  const [nombre, setNombre] = useState('')
-  const [montoEstimado, setMontoEstimado] = useState('')
-  const [tarjetaAlias, setTarjetaAlias] = useState('')
-  const [proximoVencimiento, setProximoVencimiento] = useState(hoy())
-  const [guardando, setGuardando] = useState(false)
-  const [mensaje, setMensaje] = useState(null)
-
-  // Edición, baja y vencidas viejas
-  const [editandoId, setEditandoId] = useState(null)
-  const [edicion, setEdicion] = useState({})
-  const [guardandoEdicion, setGuardandoEdicion] = useState(false)
-  const [aviso, setAviso] = useState(null)
+  const [recarga, setRecarga] = useState(0)
+  const [abierta, setAbierta] = useState(null)
+  const [form, setForm] = useState(null) // null | {} (nueva) | suscripción a editar
   const [mostrarViejas, setMostrarViejas] = useState(false)
+  const [aviso, setAviso] = useState(null)
 
   useEffect(() => {
-    cargarSuscripciones()
-  }, [usuarioId, refreshKey])
-
-  async function cargarSuscripciones() {
-    setCargando(true)
-    const { data } = await supabase
-      .from('suscripciones')
-      .select('id, nombre, monto_estimado, proximo_vencimiento, activa, tarjetas(alias)')
-      .eq('usuario_id', usuarioId)
-      .eq('activa', true)
-      .order('proximo_vencimiento', { ascending: true })
-    setSuscripciones(data || [])
-    setCargando(false)
-  }
-
-  async function obtenerOCrearTarjeta(alias) {
-    const aliasLimpio = alias.trim()
-    if (!aliasLimpio) return null
-
-    const { data: existente } = await supabase
-      .from('tarjetas')
-      .select('id')
-      .eq('usuario_id', usuarioId)
-      .ilike('alias', aliasLimpio)
-      .maybeSingle()
-
-    if (existente) return existente.id
-
-    const { data: nueva, error } = await supabase
-      .from('tarjetas')
-      .insert({ usuario_id: usuarioId, alias: aliasLimpio, tipo: 'credito' })
-      .select('id')
-      .single()
-
-    if (error) throw error
-    return nueva.id
-  }
-
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    setGuardando(true)
-    setMensaje(null)
-
-    try {
-      const tarjetaId = await obtenerOCrearTarjeta(tarjetaAlias)
-
-      const { error } = await supabase.from('suscripciones').insert({
-        usuario_id: usuarioId,
-        nombre: nombre.trim(),
-        monto_estimado: parseFloat(montoEstimado),
-        tarjeta_id: tarjetaId,
-        proximo_vencimiento: proximoVencimiento,
-      })
-
-      if (error) throw error
-
-      setMensaje({ tipo: 'ok', texto: `Suscripción "${nombre}" agregada.` })
-      setNombre('')
-      setMontoEstimado('')
-      setTarjetaAlias('')
-      setProximoVencimiento(hoy())
-      cargarSuscripciones()
-      if (onCambio) onCambio()
-    } catch (err) {
-      setMensaje({ tipo: 'error', texto: err.message })
+    async function cargar() {
+      setCargando(true)
+      const [s, t] = await Promise.all([
+        supabase.from('suscripciones')
+          .select('id, nombre, monto_estimado, proximo_vencimiento, tarjeta_id, tarjetas(alias)')
+          .eq('usuario_id', usuarioId).eq('activa', true).order('proximo_vencimiento'),
+        supabase.from('tarjetas').select('id, alias').eq('usuario_id', usuarioId).order('alias'),
+      ])
+      setSubs(s.data || [])
+      setTarjetas(t.data || [])
+      setCargando(false)
     }
+    cargar()
+  }, [usuarioId, refreshKey, recarga])
 
-    setGuardando(false)
+  const refrescar = (texto) => {
+    if (texto) setAviso({ tipo: 'ok', texto })
+    setAbierta(null)
+    setRecarga((r) => r + 1)
+    if (onCambio) onCambio()
   }
 
-  const empezarEdicion = (s) => {
-    setAviso(null)
-    setEditandoId(s.id)
-    setEdicion({
-      nombre: s.nombre,
-      monto_estimado: s.monto_estimado,
-      proximo_vencimiento: s.proximo_vencimiento,
+  const total = subs.reduce((a, s) => a + Number(s.monto_estimado), 0)
+  const viejas = subs.filter((s) => diasHasta(s.proximo_vencimiento) < -DIAS_PARA_OCULTAR)
+  const visibles = mostrarViejas ? subs : subs.filter((s) => diasHasta(s.proximo_vencimiento) >= -DIAS_PARA_OCULTAR)
+  const urgentes = visibles.filter((s) => diasHasta(s.proximo_vencimiento) <= 7)
+
+  async function yaPague(s) {
+    // Registra el pago como gasto y pasa el vencimiento al mes siguiente
+    let categoriaId = null
+    const { data: cat } = await supabase.from('categorias').select('id').eq('usuario_id', usuarioId).ilike('nombre', 'Suscripciones').maybeSingle()
+    if (cat) categoriaId = cat.id
+    else {
+      const { data: nueva } = await supabase.from('categorias').insert({ usuario_id: usuarioId, nombre: 'Suscripciones' }).select('id').single()
+      categoriaId = nueva?.id || null
+    }
+    const { error: e1 } = await supabase.from('gastos').insert({
+      usuario_id: usuarioId, monto: s.monto_estimado, fecha: hoyISO(), descripcion: s.nombre,
+      categoria_id: categoriaId, tarjeta_id: s.tarjeta_id, medio_pago: s.tarjeta_id ? 'tarjeta' : 'efectivo',
     })
+    if (e1) return setAviso({ tipo: 'error', texto: e1.message })
+    let proximo = s.proximo_vencimiento
+    while (proximo <= hoyISO()) proximo = sumarMeses(proximo, 1)
+    const { error: e2 } = await supabase.from('suscripciones').update({ proximo_vencimiento: proximo }).eq('id', s.id)
+    if (e2) return setAviso({ tipo: 'error', texto: e2.message })
+    refrescar(`Listo: anotamos el pago de ${s.nombre} y el próximo vence el ${proximo.split('-').reverse().join('/')}.`)
   }
 
-  const cancelarEdicion = () => {
-    setEditandoId(null)
-    setEdicion({})
+  async function darDeBaja(s) {
+    if (!window.confirm(`¿Dar de baja "${s.nombre}"? Deja de aparecer y no te avisamos más. El historial se conserva.`)) return
+    const { data, error } = await supabase.from('suscripciones').update({ activa: false }).eq('id', s.id).select('id')
+    if (error || !data || data.length === 0) return setAviso({ tipo: 'error', texto: error?.message || 'No se pudo dar de baja.' })
+    refrescar(`${s.nombre} dada de baja.`)
   }
-
-  const guardarEdicion = async () => {
-    const monto = parseFloat(edicion.monto_estimado)
-    if (!edicion.nombre.trim() || !monto || monto <= 0) {
-      setAviso({ tipo: 'error', texto: 'Completá el nombre y un monto mayor a 0.' })
-      return
-    }
-    setGuardandoEdicion(true)
-    const { data, error } = await supabase
-      .from('suscripciones')
-      .update({
-        nombre: edicion.nombre.trim(),
-        monto_estimado: monto,
-        proximo_vencimiento: edicion.proximo_vencimiento,
-      })
-      .eq('id', editandoId)
-      .select('id')
-    setGuardandoEdicion(false)
-
-    if (error) {
-      setAviso({ tipo: 'error', texto: error.message })
-    } else if (!data || data.length === 0) {
-      setAviso({ tipo: 'error', texto: 'No se pudo guardar el cambio. Revisá los permisos de la tabla en Supabase.' })
-    } else {
-      setAviso({ tipo: 'ok', texto: 'Suscripción actualizada.' })
-      cancelarEdicion()
-      cargarSuscripciones()
-      if (onCambio) onCambio()
-    }
-  }
-
-  // Dar de baja NO borra: la marca como inactiva, así el dato sigue sirviendo para el Resumen
-  const darDeBaja = async (s) => {
-    const ok = window.confirm(`¿Dar de baja "${s.nombre}"? Deja de aparecer en la lista y no te vamos a avisar más de sus vencimientos.`)
-    if (!ok) return
-
-    const { data, error } = await supabase
-      .from('suscripciones')
-      .update({ activa: false })
-      .eq('id', s.id)
-      .select('id')
-
-    if (error) {
-      setAviso({ tipo: 'error', texto: error.message })
-    } else if (!data || data.length === 0) {
-      setAviso({ tipo: 'error', texto: 'No se pudo dar de baja. Revisá los permisos de la tabla en Supabase.' })
-    } else {
-      setAviso({ tipo: 'ok', texto: `"${s.nombre}" dada de baja.` })
-      cargarSuscripciones()
-      if (onCambio) onCambio()
-    }
-  }
-
-  const viejas = suscripciones.filter((s) => diasHasta(s.proximo_vencimiento) < -DIAS_PARA_OCULTAR)
-  const visibles = mostrarViejas
-    ? suscripciones
-    : suscripciones.filter((s) => diasHasta(s.proximo_vencimiento) >= -DIAS_PARA_OCULTAR)
 
   return (
-    <div className="suscripciones">
-      <h2>Suscripciones y débitos automáticos</h2>
-
-      <form onSubmit={handleSubmit} className="suscripcion-form">
-        <label>Nombre</label>
-        <input type="text" value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Netflix, Spotify, gimnasio..." required />
-
-        <label>Monto estimado</label>
-        <input type="number" step="0.01" value={montoEstimado} onChange={(e) => setMontoEstimado(e.target.value)} placeholder="0.00" required />
-
-        <label>Tarjeta (opcional)</label>
-        <input type="text" value={tarjetaAlias} onChange={(e) => setTarjetaAlias(e.target.value)} placeholder="Visa Santander, Naranja X..." />
-
-        <label>Próximo vencimiento</label>
-        <input type="date" value={proximoVencimiento} onChange={(e) => setProximoVencimiento(e.target.value)} required />
-
-        <button type="submit" disabled={guardando}>
-          {guardando ? 'Guardando...' : 'Agregar suscripción'}
+    <div className="pz-screen">
+      <header className="pz-top">
+        <h1 className="pz-h1">Suscripciones</h1>
+        <button type="button" className="pz-btn pz-btn-primario" onClick={() => setForm({})}>
+          <Icono nombre="mas" size={16} /> Agregar
         </button>
+      </header>
 
-        {mensaje && <p className={mensaje.tipo === 'error' ? 'msg-error' : 'msg-ok'}>{mensaje.texto}</p>}
-      </form>
+      <section className="pz-hero" style={{ gap: 6 }}>
+        <span className="pz-hero-top">Pagás fijo todos los meses</span>
+        <span className="pz-hero-monto" style={{ fontSize: 38 }}>{plata(total, oculto)}</span>
+        <span style={{ fontSize: 12.5, color: 'var(--lima)', fontWeight: 700 }}>
+          {subs.length} activa{subs.length === 1 ? '' : 's'}{urgentes.length > 0 ? ` · ${urgentes.length} vence${urgentes.length === 1 ? '' : 'n'} esta semana` : ''}
+        </span>
+      </section>
 
-      {aviso && <p className={aviso.tipo === 'error' ? 'msg-error' : 'msg-ok'}>{aviso.texto}</p>}
+      {aviso && <p className={aviso.tipo === 'error' ? 'pz-error' : 'pz-ok'}>{aviso.texto}</p>}
 
-      {cargando ? (
-        <p className="cargando-lista">Cargando...</p>
-      ) : suscripciones.length === 0 ? (
-        <p className="cargando-lista">Todavía no cargaste ninguna suscripción.</p>
-      ) : (
-        <>
-          {(() => {
-            const proximos = visibles.filter((s) => diasHasta(s.proximo_vencimiento) <= 7)
-            return proximos.length > 0 ? (
-              <p className="resumen-vencimientos">
-                Tenés {proximos.length} vencimiento{proximos.length === 1 ? '' : 's'} en los próximos 7 días.
-              </p>
-            ) : (
-              <p className="resumen-vencimientos ok">No tenés vencimientos próximos en los próximos 7 días.</p>
-            )
-          })()}
-
-          {viejas.length > 0 && (
-            <p className="nota-ocultas">
-              {mostrarViejas
-                ? `Estás viendo ${viejas.length} suscripción${viejas.length === 1 ? '' : 'es'} vencida${viejas.length === 1 ? '' : 's'} hace más de ${DIAS_PARA_OCULTAR} días.`
-                : `Hay ${viejas.length} suscripción${viejas.length === 1 ? '' : 'es'} vencida${viejas.length === 1 ? '' : 's'} hace más de ${DIAS_PARA_OCULTAR} días oculta${viejas.length === 1 ? '' : 's'}.`}
-              <button type="button" className="btn-link" onClick={() => setMostrarViejas(!mostrarViejas)}>
-                {mostrarViejas ? 'Ocultar' : 'Mostrar'}
-              </button>
-            </p>
-          )}
-
-          <div className="tabla-scroll">
-            <table className="tabla-gastos">
-              <thead>
-                <tr>
-                  <th>Nombre</th>
-                  <th>Monto estimado</th>
-                  <th>Tarjeta</th>
-                  <th>Próximo vencimiento</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {visibles.map((s) => {
-                  if (editandoId === s.id) {
-                    return (
-                      <tr key={s.id} className="fila-editando">
-                        <td>
-                          <input className="input-tabla" type="text" value={edicion.nombre}
-                            onChange={(e) => setEdicion({ ...edicion, nombre: e.target.value })} />
-                        </td>
-                        <td>
-                          <input className="input-tabla" type="number" step="0.01" value={edicion.monto_estimado}
-                            onChange={(e) => setEdicion({ ...edicion, monto_estimado: e.target.value })} />
-                        </td>
-                        <td>{s.tarjetas?.alias || '—'}</td>
-                        <td>
-                          <input className="input-tabla" type="date" value={edicion.proximo_vencimiento}
-                            onChange={(e) => setEdicion({ ...edicion, proximo_vencimiento: e.target.value })} />
-                        </td>
-                        <td>
-                          <div className="acciones-fila">
-                            <button type="button" className="btn-accion guardar" onClick={guardarEdicion} disabled={guardandoEdicion}>
-                              {guardandoEdicion ? 'Guardando...' : 'Guardar'}
-                            </button>
-                            <button type="button" className="btn-accion" onClick={cancelarEdicion}>Cancelar</button>
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  }
-
-                  const estado = estadoVencimiento(diasHasta(s.proximo_vencimiento))
-                  const mensajeAviso = mensajeRecordatorio(s)
-                  return (
-                    <tr key={s.id}>
-                      <td>{s.nombre}</td>
-                      <td>{pesos(s.monto_estimado)}</td>
-                      <td>{s.tarjetas?.alias || '—'}</td>
-                      <td>
-                        {s.proximo_vencimiento}
-                        <span className={`badge-venc ${estado.clase}`}>{estado.texto}</span>
-                        {estado.avisar && (
-                          <div className="acciones-aviso">
-                            <a className="btn-aviso btn-aviso-wsp" target="_blank" rel="noopener noreferrer" href={`https://wa.me/?text=${encodeURIComponent(mensajeAviso)}`}>WhatsApp</a>
-                            <a className="btn-aviso btn-aviso-mail" href={`mailto:?subject=${encodeURIComponent('Recordatorio: ' + s.nombre)}&body=${encodeURIComponent(mensajeAviso)}`}>Mail</a>
-                          </div>
-                        )}
-                      </td>
-                      <td>
-                        <div className="acciones-fila">
-                          <button type="button" className="btn-accion" onClick={() => empezarEdicion(s)}>Editar</button>
-                          <button type="button" className="btn-accion peligro" onClick={() => darDeBaja(s)}>Dar de baja</button>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        </>
+      {viejas.length > 0 && (
+        <p className="pz-sub" style={{ margin: 0 }}>
+          {mostrarViejas ? 'Estás viendo' : 'Hay'} {viejas.length} vencida{viejas.length === 1 ? '' : 's'} hace más de {DIAS_PARA_OCULTAR} días{mostrarViejas ? '' : ' ocultas'}.{' '}
+          <button type="button" className="pz-link" onClick={() => setMostrarViejas(!mostrarViejas)}>{mostrarViejas ? 'Ocultar' : 'Mostrar'}</button>
+        </p>
       )}
+
+      <section className="pz-card pz-card-lista">
+        {cargando && <p className="pz-vacio">Cargando...</p>}
+        {!cargando && visibles.length === 0 && <p className="pz-vacio">Todavía no cargaste suscripciones. Netflix, Spotify, el gimnasio, el celular...</p>}
+        {visibles.map((s) => {
+          const dias = diasHasta(s.proximo_vencimiento)
+          const est = estado(dias, s.proximo_vencimiento)
+          const msj = `Recordatorio PESOS: ${s.nombre} (${plata(s.monto_estimado)}) ${est.texto.toLowerCase()}.`
+          return (
+            <div key={s.id}>
+              <button type="button" className="pz-fila pz-fila-btn" onClick={() => setAbierta(abierta === s.id ? null : s.id)} aria-expanded={abierta === s.id}>
+                <Avatar nombre={s.nombre} />
+                <span className="pz-fila-txt">
+                  <b>{s.nombre}</b>
+                  <span className={`pz-badge ${est.clase}`}>{est.texto}</span>
+                </span>
+                <span className="pz-fila-der">
+                  <span className="pz-monto">{plata(s.monto_estimado, oculto)}</span>
+                  <span className="pz-sub" style={{ fontSize: 11.5 }}>{s.tarjetas?.alias || 'Sin tarjeta'}</span>
+                </span>
+              </button>
+              {abierta === s.id && (
+                <div className="pz-acciones pz-acciones-wrap">
+                  <button type="button" className="pz-btn pz-btn-primario" onClick={() => yaPague(s)}>Ya la pagué</button>
+                  <a className="pz-btn pz-btn-claro" href={`https://wa.me/?text=${encodeURIComponent(msj)}`} target="_blank" rel="noopener noreferrer"><Icono nombre="mensaje" size={16} /> WhatsApp</a>
+                  <a className="pz-btn pz-btn-claro" href={`mailto:?subject=${encodeURIComponent('Recordatorio: ' + s.nombre)}&body=${encodeURIComponent(msj)}`}>Mail</a>
+                  <button type="button" className="pz-btn pz-btn-claro" onClick={() => setForm(s)}><Icono nombre="editar" size={16} /> Editar</button>
+                  <button type="button" className="pz-btn pz-btn-peligro" onClick={() => darDeBaja(s)}>Dar de baja</button>
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </section>
+
+      {form && (
+        <FormSuscripcion usuarioId={usuarioId} sub={form} tarjetas={tarjetas} onCerrar={() => setForm(null)}
+          onGuardado={(texto) => { setForm(null); refrescar(texto) }} />
+      )}
+    </div>
+  )
+}
+
+function FormSuscripcion({ usuarioId, sub, tarjetas, onCerrar, onGuardado }) {
+  const editando = Boolean(sub.id)
+  const [nombre, setNombre] = useState(sub.nombre || '')
+  const [monto, setMonto] = useState(sub.monto_estimado ? String(sub.monto_estimado) : '')
+  const [tarjetaId, setTarjetaId] = useState(sub.tarjeta_id || '')
+  const [vence, setVence] = useState(sub.proximo_vencimiento || hoyISO())
+  const [error, setError] = useState(null)
+  const [guardando, setGuardando] = useState(false)
+
+  async function guardar() {
+    const valor = parseFloat(monto)
+    if (!nombre.trim()) return setError('Poné el nombre de la suscripción.')
+    if (!valor || valor <= 0) return setError('El monto tiene que ser mayor a 0.')
+    setGuardando(true)
+    const datos = { nombre: nombre.trim(), monto_estimado: valor, tarjeta_id: tarjetaId || null, proximo_vencimiento: vence }
+    const consulta = editando
+      ? supabase.from('suscripciones').update(datos).eq('id', sub.id).select('id')
+      : supabase.from('suscripciones').insert({ ...datos, usuario_id: usuarioId }).select('id')
+    const { data, error: e } = await consulta
+    if (e || !data || data.length === 0) {
+      setError(e?.message || 'No se pudo guardar.')
+      setGuardando(false)
+      return
+    }
+    onGuardado(editando ? 'Suscripción actualizada.' : `${nombre.trim()} agregada.`)
+  }
+
+  return (
+    <div className="pz-sheet-fondo" onClick={onCerrar}>
+      <section className="pz-sheet" role="dialog" aria-modal="true" aria-label="Suscripción" onClick={(e) => e.stopPropagation()}>
+        <div className="pz-sheet-manija" />
+        <div className="pz-top">
+          <h2 className="pz-h2">{editando ? 'Editar suscripción' : 'Nueva suscripción'}</h2>
+          <button type="button" className="pz-icon-btn" onClick={onCerrar} aria-label="Cerrar"><Icono nombre="cerrar" size={18} /></button>
+        </div>
+        <div className="pz-campo">
+          <label className="pz-label" htmlFor="s-nombre">Nombre</label>
+          <div className="pz-input-logo">
+            <Avatar nombre={nombre || '?'} size={34} />
+            <input id="s-nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Netflix, Spotify, gimnasio..." />
+          </div>
+        </div>
+        <div className="pz-campo">
+          <label className="pz-label" htmlFor="s-monto">Monto por mes (en pesos)</label>
+          <input id="s-monto" className="pz-input" type="number" inputMode="decimal" step="0.01" value={monto} onChange={(e) => setMonto(e.target.value)} placeholder="0" />
+        </div>
+        <div className="pz-campo">
+          <span className="pz-label">Se paga con</span>
+          <div className="pz-chips">
+            <button type="button" className={`pz-chip ${!tarjetaId ? 'on' : ''}`} onClick={() => setTarjetaId('')}>Sin tarjeta</button>
+            {tarjetas.map((t) => (
+              <button key={t.id} type="button" className={`pz-chip ${tarjetaId === t.id ? 'on' : ''}`} onClick={() => setTarjetaId(t.id)}>{t.alias}</button>
+            ))}
+          </div>
+        </div>
+        <div className="pz-campo">
+          <label className="pz-label" htmlFor="s-vence">Próximo vencimiento</label>
+          <input id="s-vence" className="pz-input" type="date" value={vence} onChange={(e) => setVence(e.target.value)} />
+        </div>
+        {error && <p className="pz-error">{error}</p>}
+        <button type="button" className="pz-btn pz-btn-primario pz-btn-grande" onClick={guardar} disabled={guardando}>
+          {guardando ? 'Guardando...' : editando ? 'Guardar cambios' : 'Agregar suscripción'}
+        </button>
+      </section>
     </div>
   )
 }

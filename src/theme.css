@@ -1,0 +1,179 @@
+/* ================= PESOS · diseño nuevo ================= */
+:root {
+  --verde: #0F4D35;
+  --verde-osc: #0B3626;
+  --lima: #C8F169;
+  --fondo: #F2F4EF;
+  --tinta: #0E1A14;
+  --gris: #4B5A51;
+  --linea: #E1E6DE;
+  --rojo: #B4400C;
+  --positivo: #15803D;
+  --display: 'Bricolage Grotesque', system-ui, sans-serif;
+  --texto: 'Manrope', system-ui, sans-serif;
+}
+
+body { margin: 0; background: var(--fondo); color: var(--tinta); font-family: var(--texto); }
+
+.pz { max-width: 480px; margin: 0 auto; min-height: 100vh; padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px)); font-family: var(--texto); color: var(--tinta); }
+.pz * { box-sizing: border-box; }
+.pz-screen { padding: 22px 18px 10px; display: flex; flex-direction: column; gap: 16px; }
+
+/* Títulos */
+.pz .pz-h1 { margin: 0; font-family: var(--display); font-size: 28px; font-weight: 800; letter-spacing: -.5px; color: var(--tinta); }
+.pz .pz-h2 { margin: 0; font-family: var(--display); font-size: 18px; font-weight: 700; color: var(--tinta); }
+.pz .pz-sub { font-size: 13px; color: var(--gris); }
+.pz-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.pz-top-acciones { display: flex; gap: 8px; }
+
+/* Botones */
+.pz .pz-icon-btn { width: 44px; height: 44px; margin: 0; padding: 0; border-radius: 14px; border: 1px solid var(--linea); background: #fff; color: var(--tinta); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: none; }
+.pz .pz-btn { margin: 0; width: auto; border: 0; border-radius: 14px; min-height: 46px; padding: 0 16px; font: 700 14px var(--texto); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-shadow: none; }
+.pz .pz-btn-primario { background: var(--verde); color: #fff; }
+.pz .pz-btn-oscuro { background: var(--tinta); color: #fff; min-height: 40px; padding: 0 12px; font-size: 12.5px; border-radius: 12px; }
+.pz .pz-btn-claro { background: #fff; color: var(--verde); border: 1.5px solid var(--linea); }
+.pz .pz-btn-grande { width: 100%; min-height: 54px; font-size: 16px; font-weight: 800; border-radius: 16px; }
+.pz .pz-btn:disabled { opacity: .55; cursor: not-allowed; }
+.pz .pz-link { background: none; border: 0; padding: 0; margin: 0; width: auto; color: var(--verde); font: 700 13px var(--texto); cursor: pointer; text-decoration: none; box-shadow: none; }
+
+/* Tarjetas (cards) */
+.pz-card { background: #fff; border-radius: 22px; padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+.pz-card-lista { padding: 4px 16px 8px; gap: 0; }
+.pz-card-head { display: flex; justify-content: space-between; align-items: baseline; padding-top: 12px; }
+
+/* Bloque verde del balance */
+.pz-hero { background: var(--verde); color: #fff; border-radius: 26px; padding: 22px; display: flex; flex-direction: column; gap: 16px; }
+.pz-hero-top { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #CFE3D8; }
+.pz-hero-badge { font-size: 12px; background: rgba(200,241,105,.16); color: var(--lima); padding: 4px 10px; border-radius: 999px; font-weight: 700; }
+.pz-hero-badge.mal { background: rgba(255,179,138,.18); color: #FFB38A; }
+.pz-hero-monto { font-family: var(--display); font-size: 42px; font-weight: 800; letter-spacing: -1px; line-height: 1; }
+.pz-barra { height: 8px; border-radius: 99px; background: rgba(255,255,255,.18); overflow: hidden; }
+.pz-barra > div { height: 100%; background: var(--lima); border-radius: 99px; }
+.pz-hero-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.pz-hero-mini { background: rgba(255,255,255,.08); border-radius: 16px; padding: 12px; display: flex; flex-direction: column; gap: 4px; }
+.pz-hero-mini span { font-size: 12px; color: #CFE3D8; }
+.pz-hero-mini b { font-family: var(--display); font-size: 18px; font-weight: 700; }
+
+/* Cotizaciones */
+.pz-cots { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
+.pz-cots::-webkit-scrollbar { display: none; }
+.pz-cot { flex-shrink: 0; background: #fff; border: 1px solid var(--linea); border-radius: 999px; padding: 6px 12px; font-size: 12px; color: var(--gris); white-space: nowrap; }
+.pz-cot b { color: var(--tinta); }
+
+/* Alerta */
+.pz-alerta { background: #FFF4EC; border: 1px solid #F6D3BC; border-radius: 20px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; }
+.pz-alerta-txt { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pz-alerta-txt b { font-size: 14.5px; }
+.pz-alerta-txt span { font-size: 12.5px; color: #7A3B12; }
+
+/* Filas de movimientos */
+.pz-fila { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--linea); }
+.pz-fila:last-child { border-bottom: 0; }
+.pz-fila-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.pz-fila-txt b { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pz-fila-txt span { font-size: 12.5px; color: var(--gris); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pz-monto { font-family: var(--display); font-weight: 700; font-size: 15px; white-space: nowrap; }
+.pz-monto.pos { color: var(--positivo); }
+.pz-tag { font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 6px; background: #E6EEF9; color: #1E3A8A; margin-left: 6px; vertical-align: middle; }
+
+/* Avatares con logo */
+.pz-avatar { border-radius: 13px; color: #fff; display: inline-flex; align-items: center; justify-content: center; font-family: var(--display); font-weight: 700; flex-shrink: 0; }
+.pz-avatar-logo { background: #fff; border: 1px solid var(--linea); }
+.pz-avatar-logo img { display: block; border-radius: 6px; }
+
+/* Barra por categoría */
+.pz-stack { display: flex; height: 14px; border-radius: 99px; overflow: hidden; gap: 3px; }
+.pz-leyenda { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; font-size: 13px; }
+.pz-leyenda div { display: flex; align-items: center; gap: 8px; }
+.pz-leyenda i { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+.pz-leyenda span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Chips */
+.pz-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.pz .pz-chip { margin: 0; width: auto; border: 1px solid var(--linea); background: #fff; color: var(--tinta); font: 600 13px var(--texto); padding: 0 14px; border-radius: 999px; min-height: 40px; cursor: pointer; box-shadow: none; }
+.pz .pz-chip.on { background: var(--verde); border-color: var(--verde); color: #fff; }
+
+/* Segmentado (Gasto / Ingreso) */
+.pz-seg { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); background: #EEF1EC; border-radius: 12px; padding: 4px; gap: 4px; }
+.pz .pz-seg button { margin: 0; width: auto; border: 0; background: transparent; color: var(--gris); border-radius: 9px; font: 600 13px var(--texto); min-height: 38px; cursor: pointer; box-shadow: none; }
+.pz .pz-seg button.on { background: var(--verde); color: #fff; font-weight: 700; }
+
+/* Formularios */
+.pz-campo { display: flex; flex-direction: column; gap: 8px; }
+.pz .pz-label { font-size: 12.5px; font-weight: 700; color: var(--gris); margin: 0; }
+.pz .pz-input { width: 100%; margin: 0; border: 1.5px solid var(--linea); border-radius: 14px; padding: 0 14px; min-height: 48px; font: 600 15px var(--texto); color: var(--tinta); background: #fff; outline: none; box-shadow: none; }
+.pz .pz-input:focus { border-color: var(--verde); }
+.pz-input-logo { display: flex; align-items: center; gap: 10px; border: 1.5px solid var(--linea); border-radius: 14px; padding: 6px 10px; background: #fff; }
+.pz-input-logo:focus-within { border-color: var(--verde); }
+.pz .pz-input-logo input { border: 0; outline: 0; flex: 1; font: 600 15px var(--texto); color: var(--tinta); background: transparent; min-height: 34px; margin: 0; padding: 0; width: auto; box-shadow: none; }
+
+/* Monto grande */
+.pz-monto-grande { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.pz-monedas { display: flex; gap: 6px; }
+.pz .pz-monedas button { margin: 0; width: auto; border: 1px solid var(--linea); background: #fff; color: var(--gris); font: 700 12px var(--texto); padding: 0 12px; border-radius: 999px; min-height: 32px; cursor: pointer; box-shadow: none; }
+.pz .pz-monedas button.on { background: var(--tinta); border-color: var(--tinta); color: #fff; }
+.pz-monto-fila { display: flex; align-items: baseline; justify-content: center; gap: 6px; font-family: var(--display); font-weight: 800; font-size: 44px; letter-spacing: -1px; }
+.pz .pz-monto-fila input { width: 220px; border: 0; outline: 0; background: transparent; font: 800 44px var(--display); color: var(--tinta); text-align: left; letter-spacing: -1px; padding: 0; margin: 0; box-shadow: none; }
+.pz-conversion { font-size: 13px; color: var(--gris); text-align: center; }
+
+/* Hoja que sube desde abajo */
+.pz-sheet-fondo { position: fixed; inset: 0; background: rgba(14,26,20,.45); z-index: 60; display: flex; align-items: flex-end; justify-content: center; }
+.pz-sheet { width: 100%; max-width: 480px; max-height: 92vh; overflow-y: auto; background: #fff; border-radius: 28px 28px 0 0; padding: 12px 20px calc(24px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 16px; }
+.pz-sheet-manija { width: 44px; height: 5px; border-radius: 99px; background: #D5DBD2; align-self: center; }
+
+/* Mensajes */
+.pz-ok { background: #E7F1EB; color: #1F5E40; border-radius: 12px; padding: 10px 12px; font-size: 13.5px; font-weight: 600; margin: 0; }
+.pz-error { background: #FDE8DC; color: var(--rojo); border-radius: 12px; padding: 10px 12px; font-size: 13.5px; font-weight: 600; margin: 0; }
+.pz-vacio { text-align: center; color: var(--gris); font-size: 14px; padding: 18px 0; margin: 0; }
+
+/* Barra de navegación de abajo */
+.pz-nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; background: #fff; border-top: 1px solid var(--linea); padding-bottom: env(safe-area-inset-bottom, 0px); }
+.pz-nav-in { max-width: 480px; margin: 0 auto; height: 74px; display: flex; align-items: center; padding: 0 8px; gap: 2px; }
+.pz .pz-nav-btn, .pz-nav .pz-nav-btn { flex: 1; margin: 0; width: auto; border: 0; background: transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: #5F6B64; font: 500 11px var(--texto); min-height: 48px; cursor: pointer; box-shadow: none; padding: 0; }
+.pz-nav .pz-nav-btn.on { color: var(--verde); font-weight: 700; }
+.pz-nav .pz-fab { width: 58px; height: 58px; margin: -26px 6px 0; padding: 0; border: 0; border-radius: 20px; background: var(--verde); color: var(--lima); display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 18px rgba(15,77,53,.35); cursor: pointer; flex-shrink: 0; }
+
+/* Pantallas viejas mientras las rediseñamos */
+.pz-legacy { background: #fff; border-radius: 22px; padding: 18px; overflow-x: auto; }
+
+/* Escritorio: la app se ve como columna centrada */
+@media (min-width: 700px) {
+  .pz { padding-top: 12px; }
+}
+
+/* ===== Parte 2: Movimientos y Suscripciones ===== */
+.pz-mes { display: flex; align-items: center; gap: 4px; font-weight: 700; font-size: 14px; text-transform: capitalize; }
+.pz .pz-icon-chico { width: 38px; height: 38px; border-radius: 12px; }
+.pz .pz-icon-btn:disabled { opacity: .35; cursor: not-allowed; }
+.pz-seg-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); background: #E4E9E1; border-radius: 14px; }
+.pz .pz-seg-3 button.on { background: #fff; color: var(--tinta); }
+.pz-buscar { display: flex; align-items: center; gap: 10px; background: #fff; border: 1px solid var(--linea); border-radius: 14px; padding: 0 14px; min-height: 46px; color: var(--gris); }
+.pz .pz-buscar input { border: 0; outline: 0; flex: 1; font: 500 14px var(--texto); background: transparent; color: var(--tinta); margin: 0; padding: 0; width: auto; min-height: 44px; box-shadow: none; }
+.pz-chips-scroll { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+.pz-chips-scroll::-webkit-scrollbar { display: none; }
+.pz-chips-scroll .pz-chip { flex-shrink: 0; }
+.pz-totales { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 10px; }
+.pz-totales div { background: #fff; border-radius: 16px; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; }
+.pz-totales span { font-size: 12px; color: var(--gris); }
+.pz-totales b { font-family: var(--display); font-size: 18px; }
+.pz-totales b.pos { color: var(--positivo); }
+.pz-dia { font-size: 12px; font-weight: 700; color: var(--gris); text-transform: uppercase; letter-spacing: .06em; padding: 14px 0 2px; }
+.pz .pz-fila-btn { width: 100%; margin: 0; background: transparent; border: 0; border-bottom: 1px solid var(--linea); border-radius: 0; text-align: left; font: inherit; color: inherit; cursor: pointer; box-shadow: none; padding: 11px 0; }
+.pz-fila-der { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.pz-acciones { display: flex; gap: 8px; padding: 10px 0 12px; border-bottom: 1px solid var(--linea); }
+.pz-acciones .pz-btn { flex: 1; min-height: 42px; font-size: 13px; }
+.pz-acciones-wrap { flex-wrap: wrap; }
+.pz-acciones-wrap .pz-btn { flex: 1 1 40%; }
+.pz .pz-btn-peligro { background: #fff; color: var(--rojo); border: 1.5px solid #F2C9B4; }
+.pz-badge { font-size: 11.5px; font-weight: 700; padding: 3px 8px; border-radius: 999px; align-self: flex-start; }
+.pz-badge.urg { background: #FDE8DC; color: var(--rojo); }
+.pz-badge.prox { background: #FFF3D1; color: #7A5300; }
+.pz-badge.ok { background: #E7F1EB; color: #1F5E40; }
+
+/* Métricas (pantalla Resumen) con las tipografías nuevas */
+.pz .dash-titulo, .pz .dash-bloque h3 { font-family: var(--display); color: var(--tinta); }
+.pz .dash-ticket, .pz .dash-medio, .pz .dash-vacio, .pz .dash-error { font-family: var(--texto); }
+.pz .dash-ticket { border: 0; background: #F7F9F5; box-shadow: none; border-radius: 18px; }
+.pz .dash-fila.principal strong { font-family: var(--display); }
+.pz .dash-bloque { border: 0; box-shadow: none; border-radius: 18px; background: #F7F9F5; }
+.pz .dash-nav button { box-shadow: none; border-radius: 12px; border: 1px solid var(--linea); color: var(--tinta); }
