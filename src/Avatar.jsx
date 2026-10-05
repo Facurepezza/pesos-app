@@ -1,60 +1,57 @@
 import { useState } from 'react'
+import Icono from './Iconos'
+import { comercioDe } from './comercios'
 
-// Palabra clave -> dominio de la marca, para traer su logo automáticamente
-const DOMINIOS = {
-  spotify: 'spotify.com', netflix: 'netflix.com', 'disney': 'disneyplus.com', 'hbo': 'max.com', 'max ': 'max.com',
-  'prime video': 'primevideo.com', amazon: 'amazon.com', youtube: 'youtube.com', 'apple': 'apple.com', icloud: 'apple.com',
-  google: 'google.com', chatgpt: 'openai.com', openai: 'openai.com', claude: 'claude.ai', canva: 'canva.com',
-  mcdonald: 'mcdonalds.com', 'burger king': 'burgerking.com.ar', starbucks: 'starbucks.com', 'mostaza': 'mostazaweb.com.ar',
-  pedidosya: 'pedidosya.com.ar', rappi: 'rappi.com.ar', uber: 'uber.com', cabify: 'cabify.com', didi: 'didiglobal.com',
-  carrefour: 'carrefour.com.ar', coto: 'coto.com.ar', jumbo: 'jumbo.com.ar', disco: 'disco.com.ar', 'dia ': 'diaonline.supermercadosdia.com.ar',
-  ypf: 'ypf.com', shell: 'shell.com', axion: 'axionenergy.com',
-  'mercado pago': 'mercadopago.com.ar', 'mercadopago': 'mercadopago.com.ar', 'mercado libre': 'mercadolibre.com.ar', mercadolibre: 'mercadolibre.com.ar',
-  galicia: 'bancogalicia.com', santander: 'santander.com.ar', bbva: 'bbva.com.ar', macro: 'macro.com.ar', nacion: 'bna.com.ar',
-  provincia: 'bancoprovincia.com.ar', 'naranja': 'naranjax.com', brubank: 'brubank.com', 'uala': 'uala.com.ar', 'icbc': 'icbc.com.ar',
-  hsbc: 'hsbc.com.ar', patagonia: 'bancopatagonia.com.ar', supervielle: 'supervielle.com.ar', 'american express': 'americanexpress.com', amex: 'americanexpress.com',
-  personal: 'personal.com.ar', movistar: 'movistar.com.ar', claro: 'claro.com.ar', telecentro: 'telecentro.com.ar', fibertel: 'personal.com.ar',
-  edenor: 'edenor.com', edesur: 'edesur.com.ar', metrogas: 'metrogas.com.ar', naturgy: 'naturgy.com.ar', aysa: 'aysa.com.ar',
-  steam: 'steampowered.com', playstation: 'playstation.com', xbox: 'xbox.com', nike: 'nike.com', adidas: 'adidas.com', zara: 'zara.com',
-  smart: 'smartfit.com.ar', megatlon: 'megatlon.com', sube: 'argentina.gob.ar', despegar: 'despegar.com.ar', airbnb: 'airbnb.com',
+// Ícono y color para cada categoría (cuando no hay logo de marca)
+const POR_CATEGORIA = {
+  'súper': ['carrito', '#0F4D35'], comida: ['cubiertos', '#C2410C'], transporte: ['auto', '#0E7490'],
+  salidas: ['copa', '#7C3AED'], suscripciones: ['repetir', '#6B7DD6'], servicios: ['rayo', '#B7791F'],
+  salud: ['salud', '#BE185D'], seguros: ['escudo', '#334155'], hogar: ['inicio', '#3E8E68'],
+  ropa: ['remera', '#9333EA'], 'tecnología': ['celu', '#1E40AF'], viajes: ['avion', '#0369A1'],
+  'educación': ['libro', '#4D7C0F'], otros: ['puntos', '#64748B'], 'sin categoría': ['puntos', '#64748B'],
+  sueldo: ['billete', '#15803D'], 'freelance / changas': ['maletin', '#15803D'], ventas: ['etiqueta', '#15803D'],
+  rendimientos: ['grafico', '#15803D'], regalo: ['regalo', '#15803D'], otro: ['puntos', '#15803D'],
 }
 
 const COLORES = ['#0F4D35', '#3E8E68', '#C2410C', '#6B7DD6', '#B7791F', '#0E7490', '#7C3AED', '#334155']
 
-const normalizar = (t) =>
-  (t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') + ' '
+export default function Avatar({ nombre, categoria, size = 42 }) {
+  const [fallo, setFallo] = useState(null)
+  const comercio = comercioDe(nombre)
+  const dominio = comercio?.d
 
-export function dominioDe(texto) {
-  const t = normalizar(texto)
-  for (const clave of Object.keys(DOMINIOS)) {
-    if (t.includes(clave)) return DOMINIOS[clave]
-  }
-  return null
-}
-
-export default function Avatar({ nombre, size = 42, color }) {
-  const [fallo, setFallo] = useState(false)
-  const dominio = dominioDe(nombre)
-  const limpio = (nombre || '?').trim()
-  const letra = limpio.charAt(0).toUpperCase() || '?'
-  const fondo = color || COLORES[limpio.length % COLORES.length]
-
-  if (dominio && !fallo) {
+  // 1) Logo de la marca
+  if (dominio && fallo !== dominio) {
     return (
       <span className="pz-avatar pz-avatar-logo" style={{ width: size, height: size }}>
         <img
           src={`https://www.google.com/s2/favicons?domain=${dominio}&sz=128`}
           alt=""
-          width={size * 0.62}
-          height={size * 0.62}
-          onError={() => setFallo(true)}
+          width={Math.round(size * 0.62)}
+          height={Math.round(size * 0.62)}
+          onError={() => setFallo(dominio)}
+          onLoad={(e) => { if (e.currentTarget.naturalWidth <= 16) setFallo(dominio) }}
         />
       </span>
     )
   }
 
+  // 2) Ícono de la categoría
+  const clave = (categoria || nombre || '').trim().toLowerCase()
+  const cat = POR_CATEGORIA[clave] || (comercio?.c ? POR_CATEGORIA[comercio.c.toLowerCase()] : null)
+  if (cat) {
+    return (
+      <span className="pz-avatar" style={{ width: size, height: size, background: cat[1] }}>
+        <Icono nombre={cat[0]} size={Math.round(size * 0.5)} color="#FFFFFF" />
+      </span>
+    )
+  }
+
+  // 3) Inicial con color
+  const limpio = (nombre || '?').trim()
+  const letra = limpio.charAt(0).toUpperCase() || '?'
   return (
-    <span className="pz-avatar" style={{ width: size, height: size, background: fondo, fontSize: size * 0.42 }}>
+    <span className="pz-avatar" style={{ width: size, height: size, background: COLORES[limpio.length % COLORES.length], fontSize: size * 0.42 }}>
       {letra}
     </span>
   )

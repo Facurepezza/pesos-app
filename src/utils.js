@@ -50,7 +50,8 @@ export function plata(n, oculto = false, moneda = 'ARS', decimales = false) {
   }).format(Number(n) || 0)
 }
 
-export const CATEGORIAS = ['Súper', 'Comida', 'Transporte', 'Salidas', 'Suscripciones', 'Servicios', 'Salud', 'Hogar', 'Ropa', 'Otros']
+export const CATEGORIAS = ['Súper', 'Comida', 'Transporte', 'Salidas', 'Suscripciones', 'Servicios', 'Salud', 'Seguros', 'Hogar', 'Ropa', 'Tecnología', 'Viajes', 'Educación', 'Otros']
+
 
 export const COLORES_CAT = ['#0F4D35', '#3E8E68', '#E0A22B', '#6B7DD6', '#C2410C', '#8B5CF6', '#0E7490', '#9CA3AF']
 

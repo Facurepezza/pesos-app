@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from './supabaseClient'
+import Autocompletar from './Autocompletar'
 import Avatar from './Avatar'
 import Icono from './Iconos'
 import { plata, hoyISO, sumarMeses, CATEGORIAS, CONCEPTOS_INGRESO, traerCotizaciones } from './utils'
@@ -27,7 +28,7 @@ export default function CargarSheet({ usuarioId, tipoInicial = 'gasto', onCerrar
   useEffect(() => {
     async function cargar() {
       const [t, c] = await Promise.all([
-        supabase.from('tarjetas').select('id, alias').eq('usuario_id', usuarioId).order('alias'),
+        supabase.from('tarjetas').select('id, alias, ultimos4').eq('usuario_id', usuarioId).order('alias'),
         supabase.from('categorias').select('nombre').eq('usuario_id', usuarioId).order('nombre'),
       ])
       setTarjetas(t.data || [])
@@ -161,11 +162,14 @@ export default function CargarSheet({ usuarioId, tipoInicial = 'gasto', onCerrar
 
         <div className="pz-campo">
           <label className="pz-label" htmlFor="desc">{tipo === 'gasto' ? '¿En qué?' : '¿De dónde?'}</label>
-          <div className="pz-input-logo">
-            <Avatar nombre={descripcion || (tipo === 'gasto' ? categoria : concepto) || '?'} size={34} />
-            <input id="desc" value={descripcion} onChange={(e) => setDescripcion(e.target.value)}
-              placeholder={tipo === 'gasto' ? 'Spotify, Carrefour, nafta...' : 'Sueldo de octubre, venta...'} />
-          </div>
+          <Autocompletar
+            id="desc"
+            value={descripcion}
+            onChange={setDescripcion}
+            categoria={tipo === 'gasto' ? categoria : concepto}
+            onElegir={(c) => { if (tipo === 'gasto' && c.c) setCategoria(c.c) }}
+            placeholder={tipo === 'gasto' ? 'Escribí: mc, jumbo, ypf, osde...' : 'Sueldo de octubre, venta...'}
+          />
         </div>
 
         {tipo === 'gasto' ? (
@@ -186,7 +190,9 @@ export default function CargarSheet({ usuarioId, tipoInicial = 'gasto', onCerrar
                 <button type="button" className={`pz-chip ${medio === 'efectivo' ? 'on' : ''}`} onClick={() => setMedio('efectivo')}>Efectivo</button>
                 <button type="button" className={`pz-chip ${medio === 'mercado_pago' ? 'on' : ''}`} onClick={() => setMedio('mercado_pago')}>Mercado Pago</button>
                 {tarjetas.map((t) => (
-                  <button key={t.id} type="button" className={`pz-chip ${medio === 't:' + t.id ? 'on' : ''}`} onClick={() => setMedio('t:' + t.id)}>{t.alias}</button>
+                  <button key={t.id} type="button" className={`pz-chip pz-chip-logo ${medio === 't:' + t.id ? 'on' : ''}`} onClick={() => setMedio('t:' + t.id)}>
+                    <Avatar nombre={t.alias} size={24} />{t.alias}{t.ultimos4 ? ` ·${t.ultimos4}` : ''}
+                  </button>
                 ))}
                 <button type="button" className={`pz-chip ${medio === 'nueva' ? 'on' : ''}`} onClick={() => setMedio('nueva')}>+ Tarjeta nueva</button>
               </div>

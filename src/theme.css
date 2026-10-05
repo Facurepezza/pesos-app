@@ -222,3 +222,17 @@ body { margin: 0; background: var(--fondo); color: var(--tinta); font-family: va
 .pz .pz-btn-borde { background: transparent; color: #fff; border: 1.5px solid rgba(255,255,255,.35); }
 .pz .pz-link-lima { color: var(--lima); font-size: 14px; padding: 10px; text-decoration: underline; text-align: center; }
 .pz-bienv-form { background: #fff; color: var(--tinta); border-radius: 24px; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+
+/* ===== Logos y autocompletado ===== */
+.pz-auto { position: relative; }
+.pz-auto-lista { position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 70; list-style: none; margin: 0; padding: 6px; background: #fff; border: 1px solid var(--linea); border-radius: 16px; box-shadow: 0 14px 30px rgba(14,26,20,.16); max-height: 300px; overflow-y: auto; }
+.pz .pz-auto-lista button { width: 100%; margin: 0; display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 0; border-radius: 12px; background: transparent; color: var(--tinta); font: 600 14.5px var(--texto); text-align: left; cursor: pointer; box-shadow: none; min-height: 46px; }
+.pz .pz-auto-lista button.activo, .pz .pz-auto-lista button:hover { background: #EEF4EE; }
+.pz-auto-lista span { flex: 1; }
+.pz-auto-lista small { font-size: 11.5px; color: var(--gris); font-weight: 600; }
+.pz .pz-chip-logo { display: inline-flex; align-items: center; gap: 8px; padding-left: 6px; }
+.pz .pz-chip-logo .pz-avatar { border-radius: 8px; }
+.pz-tarjeta-nombre { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.pz-tarjeta-nombre .pz-avatar { border-radius: 9px; border: 0; }
+.pz-tarjeta-pie { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.pz-tarjeta-num { font-family: var(--display); font-size: 13px; letter-spacing: .12em; opacity: .95; }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from './supabaseClient'
 import Avatar from './Avatar'
+import Autocompletar from './Autocompletar'
 import Icono from './Iconos'
 import { plata, claveMes, mesDesplazado, MESES } from './utils'
 
@@ -32,7 +33,7 @@ export default function Tarjetas({ usuarioId, refreshKey, oculto, onCambio }) {
     async function cargar() {
       setCargando(true)
       const [t, g] = await Promise.all([
-        supabase.from('tarjetas').select('id, alias, red, dia_cierre, dia_vencimiento, color').eq('usuario_id', usuarioId).order('alias'),
+        supabase.from('tarjetas').select('id, alias, red, dia_cierre, dia_vencimiento, color, ultimos4').eq('usuario_id', usuarioId).order('alias'),
         supabase.from('gastos')
           .select('id, monto, fecha, descripcion, tarjeta_id, compra_id, cuota_num, cuotas_total, categorias(nombre)')
           .eq('usuario_id', usuarioId).not('tarjeta_id', 'is', null).gte('fecha', `${mesKey}-01`),
@@ -107,17 +108,20 @@ export default function Tarjetas({ usuarioId, refreshKey, oculto, onCambio }) {
               <button key={t.id} type="button" className="pz-tarjeta" style={{ background: color, color: textoSobre(color) }}
                 onClick={() => setForm(t)} aria-label={`Editar ${t.alias}`}>
                 <span className="pz-tarjeta-top">
-                  <b>{t.alias}</b>
+                  <span className="pz-tarjeta-nombre"><Avatar nombre={t.alias} size={30} /><b>{t.alias}</b></span>
                   <small>{(t.red || '').toUpperCase()}</small>
                 </span>
                 <span className="pz-tarjeta-mid">
                   <small>Gastado este mes</small>
                   <strong>{plata(delMes(t.id), oculto)}</strong>
                 </span>
-                <small className="pz-tarjeta-pie">
-                  {t.dia_cierre ? `Cierra el ${t.dia_cierre}` : 'Tocá para cargar el cierre'}
-                  {t.dia_vencimiento ? ` · Vence el ${t.dia_vencimiento}` : ''}
-                </small>
+                <span className="pz-tarjeta-pie">
+                  <small>
+                    {t.dia_cierre ? `Cierra el ${t.dia_cierre}` : 'Tocá para cargar el cierre'}
+                    {t.dia_vencimiento ? ` · Vence el ${t.dia_vencimiento}` : ''}
+                  </small>
+                  {t.ultimos4 && <small className="pz-tarjeta-num">•••• {t.ultimos4}</small>}
+                </span>
               </button>
             )
           })}
@@ -181,6 +185,8 @@ function FormTarjeta({ usuarioId, tarjeta, onCerrar, onGuardado, onBorrar }) {
   const [cierre, setCierre] = useState(tarjeta.dia_cierre || '')
   const [vence, setVence] = useState(tarjeta.dia_vencimiento || '')
   const [color, setColor] = useState(tarjeta.color || colorPorDefecto(tarjeta.alias))
+  const [ultimos4, setUltimos4] = useState(tarjeta.ultimos4 || '')
+  const [colorTocado, setColorTocado] = useState(Boolean(tarjeta.color))
   const [error, setError] = useState(null)
   const [guardando, setGuardando] = useState(false)
 
@@ -189,8 +195,9 @@ function FormTarjeta({ usuarioId, tarjeta, onCerrar, onGuardado, onBorrar }) {
     const c = cierre ? parseInt(cierre, 10) : null
     const v = vence ? parseInt(vence, 10) : null
     if ((c && (c < 1 || c > 31)) || (v && (v < 1 || v > 31))) return setError('Los días tienen que estar entre 1 y 31.')
+    if (ultimos4 && !/^[0-9]{4}$/.test(ultimos4)) return setError('Los últimos dígitos tienen que ser exactamente 4 números.')
     setGuardando(true)
-    const datos = { alias: alias.trim(), red, dia_cierre: c, dia_vencimiento: v, color }
+    const datos = { alias: alias.trim(), red, dia_cierre: c, dia_vencimiento: v, color, ultimos4: ultimos4 || null }
     const consulta = editando
       ? supabase.from('tarjetas').update(datos).eq('id', tarjeta.id).select('id')
       : supabase.from('tarjetas').insert({ ...datos, usuario_id: usuarioId, tipo: 'credito' }).select('id')
@@ -213,10 +220,19 @@ function FormTarjeta({ usuarioId, tarjeta, onCerrar, onGuardado, onBorrar }) {
         </div>
         <div className="pz-campo">
           <label className="pz-label" htmlFor="t-alias">Nombre</label>
-          <div className="pz-input-logo">
-            <Avatar nombre={alias || '?'} size={34} />
-            <input id="t-alias" value={alias} onChange={(e) => setAlias(e.target.value)} placeholder="Visa Galicia, Naranja X..." />
-          </div>
+          <Autocompletar
+            id="t-alias"
+            value={alias}
+            onChange={(v) => { setAlias(v); if (!colorTocado) setColor(colorPorDefecto(v)) }}
+            filtro={(c) => c.c === null}
+            placeholder="Escribí el banco: galicia, naranja, santander..."
+          />
+        </div>
+        <div className="pz-campo">
+          <label className="pz-label" htmlFor="t-ult">Últimos 4 números (opcional)</label>
+          <input id="t-ult" className="pz-input" inputMode="numeric" maxLength={4} value={ultimos4}
+            onChange={(e) => setUltimos4(e.target.value.replace(/[^0-9]/g, '').slice(0, 4))} placeholder="4417" />
+          <span className="pz-sub">Solo para reconocerla. Nunca cargues el número completo, el código de seguridad ni el PIN.</span>
         </div>
         <div className="pz-campo">
           <span className="pz-label">Red</span>
@@ -241,7 +257,7 @@ function FormTarjeta({ usuarioId, tarjeta, onCerrar, onGuardado, onBorrar }) {
           <div className="pz-colores">
             {COLORES.map((c) => (
               <button key={c} type="button" className={`pz-color ${color === c ? 'on' : ''}`} style={{ background: c }}
-                onClick={() => setColor(c)} aria-label={`Color ${c}`} aria-pressed={color === c} />
+                onClick={() => { setColor(c); setColorTocado(true) }} aria-label={`Color ${c}`} aria-pressed={color === c} />
             ))}
           </div>
         </div>
