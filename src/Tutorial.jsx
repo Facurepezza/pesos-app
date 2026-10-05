@@ -12,7 +12,7 @@ const PASOS = [
 
 const CLAVE = 'pesos_tutorial_v2'
 
-export default function Tutorial() {
+export default function Tutorial({ abrir = 0 }) {
   const [abierto, setAbierto] = useState(false)
   const [paso, setPaso] = useState(0)
 
@@ -21,6 +21,10 @@ export default function Tutorial() {
       if (!localStorage.getItem(CLAVE)) setAbierto(true)
     } catch { /* si el navegador bloquea el guardado, simplemente no se abre solo */ }
   }, [])
+
+  useEffect(() => {
+    if (abrir) { setPaso(0); setAbierto(true) }
+  }, [abrir])
 
   function cerrar() {
     try { localStorage.setItem(CLAVE, 'si') } catch { /* nada */ }

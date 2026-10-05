@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from './supabaseClient'
 import Avatar from './Avatar'
 import Icono from './Iconos'
+import { useToast } from './Toast'
 import { plata, claveMes, mesDesplazado, fechaLinda, hoyISO, MESES_LARGO, CATEGORIAS, CONCEPTOS_INGRESO, MEDIOS } from './utils'
 
 export default function Movimientos({ usuarioId, refreshKey, oculto, onCambio }) {
@@ -16,7 +17,7 @@ export default function Movimientos({ usuarioId, refreshKey, oculto, onCambio })
   const [recarga, setRecarga] = useState(0)
   const [abierto, setAbierto] = useState(null) // id de la fila con acciones abiertas
   const [editando, setEditando] = useState(null)
-  const [aviso, setAviso] = useState(null)
+  const avisar = useToast()
 
   const mesKey = claveMes(sel.anio, sel.mes)
   const esActual = mesKey === claveMes(ahora.getFullYear(), ahora.getMonth())
@@ -110,26 +111,34 @@ export default function Movimientos({ usuarioId, refreshKey, oculto, onCambio })
     URL.revokeObjectURL(url)
   }
 
+  // Borra al toque y deja 6 segundos para "Deshacer" (vuelve a cargar lo borrado)
   async function eliminar(m) {
-    let ok
-    let consulta
-    if (m.tipo === 'gasto' && m.raw.compra_id) {
-      ok = window.confirm(`"${m.nombre}" es una compra en ${m.raw.cuotas_total} cuotas. ¿Borrar todas las cuotas?`)
-      consulta = supabase.from('gastos').delete().eq('compra_id', m.raw.compra_id)
-    } else {
-      ok = window.confirm(`¿Eliminar "${m.nombre}" de ${plata(Math.abs(m.monto))}? No se puede deshacer.`)
-      consulta = supabase.from(m.tipo === 'gasto' ? 'gastos' : 'ingresos').delete().eq('id', m.id)
-    }
-    if (!ok) return
-    const { data, error } = await consulta.select('id')
+    const tabla = m.tipo === 'gasto' ? 'gastos' : 'ingresos'
+    const esCompra = m.tipo === 'gasto' && m.raw.compra_id
+    const consulta = esCompra
+      ? supabase.from('gastos').delete().eq('compra_id', m.raw.compra_id)
+      : supabase.from(tabla).delete().eq('id', m.id)
+    const { data, error } = await consulta.select('*')
     if (error || !data || data.length === 0) {
-      setAviso({ tipo: 'error', texto: error?.message || 'No se pudo eliminar. Revisá los permisos en Supabase.' })
-    } else {
-      setAviso({ tipo: 'ok', texto: 'Movimiento eliminado.' })
-      setAbierto(null)
-      setRecarga((r) => r + 1)
-      if (onCambio) onCambio()
+      avisar(error?.message || 'No se pudo eliminar. Revisá los permisos en Supabase.', { tipo: 'error' })
+      return
     }
+    setAbierto(null)
+    setRecarga((r) => r + 1)
+    if (onCambio) onCambio()
+    avisar(esCompra ? `Borraste las ${data.length} cuotas de "${m.nombre}"` : `Borraste "${m.nombre}"`, {
+      accion: {
+        label: 'Deshacer',
+        fn: async () => {
+          const filas = data.map(({ id, created_at, ...resto }) => resto)
+          const { error: e } = await supabase.from(tabla).insert(filas)
+          if (e) return avisar('No se pudo deshacer: ' + e.message, { tipo: 'error' })
+          setRecarga((r) => r + 1)
+          if (onCambio) onCambio()
+          avisar('Listo, volvió a su lugar ✓')
+        },
+      },
+    })
   }
 
   return (
@@ -175,8 +184,6 @@ export default function Movimientos({ usuarioId, refreshKey, oculto, onCambio })
         {vista !== 'ingresos' && <div><span>Salió</span><b>- {plata(totalGastos, oculto)}</b></div>}
       </div>
 
-      {aviso && <p className={aviso.tipo === 'error' ? 'pz-error' : 'pz-ok'}>{aviso.texto}</p>}
-
       <section className="pz-card pz-card-lista">
         {cargando && <p className="pz-vacio">Cargando...</p>}
         {!cargando && grupos.length === 0 && <p className="pz-vacio">No hay movimientos en {MESES_LARGO[sel.mes]}.</p>}
@@ -207,7 +214,7 @@ export default function Movimientos({ usuarioId, refreshKey, oculto, onCambio })
 
       {editando && (
         <EditarMovimiento usuarioId={usuarioId} mov={editando} onCerrar={() => setEditando(null)}
-          onGuardado={() => { setEditando(null); setAbierto(null); setAviso({ tipo: 'ok', texto: 'Cambios guardados.' }); setRecarga((r) => r + 1); if (onCambio) onCambio() }} />
+          onGuardado={() => { setEditando(null); setAbierto(null); avisar('Cambios guardados ✓'); setRecarga((r) => r + 1); if (onCambio) onCambio() }} />
       )}
     </div>
   )

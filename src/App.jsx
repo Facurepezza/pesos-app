@@ -12,6 +12,8 @@ import Icono from './Iconos'
 import { ordenarDatos } from './ordenarDatos'
 import NuevaClave from './NuevaClave'
 import InstalarApp from './InstalarApp'
+import Perfil from './Perfil'
+import { ToastProvider, useToast } from './Toast'
 import './App.css'
 import './theme.css'
 
@@ -24,6 +26,15 @@ const NAV = [
 ]
 
 function App() {
+  return (
+    <ToastProvider>
+      <PesosApp />
+    </ToastProvider>
+  )
+}
+
+function PesosApp() {
+  const avisar = useToast()
   const [session, setSession] = useState(null)
   const [cargandoSesion, setCargandoSesion] = useState(true)
   const [refreshKey, setRefreshKey] = useState(0)
@@ -31,6 +42,8 @@ function App() {
   const [hoja, setHoja] = useState(null) // null | 'gasto' | 'ingreso'
   const [oculto, setOculto] = useState(false)
   const [recuperando, setRecuperando] = useState(false)
+  const [perfil, setPerfil] = useState(false)
+  const [verTutorial, setVerTutorial] = useState(0)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -58,13 +71,14 @@ function App() {
   if (!session) return <Auth />
 
   const uid = session.user.id
+  const nombrePila = (session.user.user_metadata?.nombre || '').trim().split(' ')[0]
 
   return (
     <div className="pz">
       {tab === 'inicio' && <InstalarApp />}
       {tab === 'inicio' && (
-        <Inicio usuarioId={uid} email={session.user.email} refreshKey={refreshKey}
-          oculto={oculto} setOculto={setOculto} onSalir={() => supabase.auth.signOut()} irA={setTab} />
+        <Inicio usuarioId={uid} email={nombrePila || session.user.email} refreshKey={refreshKey}
+          oculto={oculto} setOculto={setOculto} onSalir={() => setPerfil(true)} irA={setTab} />
       )}
 
       {tab === 'movimientos' && (
@@ -109,10 +123,15 @@ function App() {
 
       {hoja && (
         <CargarSheet usuarioId={uid} tipoInicial={hoja} onCerrar={() => setHoja(null)}
-          onGuardado={() => { setHoja(null); refrescar() }} />
+          onGuardado={() => { setHoja(null); refrescar(); avisar('Listo, quedó guardado ✓') }} />
       )}
 
-      <Tutorial />
+      {perfil && (
+        <Perfil usuario={session.user} onCerrar={() => setPerfil(false)}
+          onVerTutorial={() => { setPerfil(false); setVerTutorial((n) => n + 1) }} />
+      )}
+
+      <Tutorial abrir={verTutorial} />
     </div>
   )
 }
