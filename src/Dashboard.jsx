@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, CartesianGrid
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend
 } from 'recharts'
 import { supabase } from './supabaseClient'
 import './Dashboard.css'
@@ -9,6 +9,7 @@ import './Dashboard.css'
 const T_GASTOS = 'gastos'
 const T_CATEGORIAS = 'categorias'
 const T_SUSCRIPCIONES = 'suscripciones'
+const T_INGRESOS = 'ingresos'
 const C_VENCIMIENTO = 'proximo_vencimiento'
 
 const VERDE = '#14532D'
@@ -33,6 +34,7 @@ export default function Dashboard() {
   const [gastos, setGastos] = useState([])
   const [categorias, setCategorias] = useState({})
   const [subs, setSubs] = useState([])
+  const [ingresos, setIngresos] = useState([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState('')
 
@@ -43,19 +45,21 @@ export default function Dashboard() {
       const inicio = mesDesplazado(sel.anio, sel.mes, -5)
       const desde = `${claveMes(inicio.anio, inicio.mes)}-01`
 
-      const [g, c, s] = await Promise.all([
+      const [g, c, s, ing] = await Promise.all([
         supabase.from(T_GASTOS).select('monto, fecha, medio_pago, categoria_id').gte('fecha', desde),
         supabase.from(T_CATEGORIAS).select('id, nombre'),
-        supabase.from(T_SUSCRIPCIONES).select(`monto_estimado, activa, ${C_VENCIMIENTO}`)
+        supabase.from(T_SUSCRIPCIONES).select(`monto_estimado, activa, ${C_VENCIMIENTO}`),
+        supabase.from(T_INGRESOS).select('monto, fecha').gte('fecha', desde)
       ])
 
-      const falla = g.error || c.error || s.error
+      const falla = g.error || c.error || s.error || ing.error
       if (falla) {
         setError(falla.message)
       } else {
         setGastos(g.data || [])
         setCategorias(Object.fromEntries((c.data || []).map((x) => [x.id, x.nombre])))
         setSubs(s.data || [])
+        setIngresos(ing.data || [])
       }
       setCargando(false)
     }
@@ -73,6 +77,11 @@ export default function Dashboard() {
       .filter((x) => String(x.fecha).slice(0, 7) === anterior)
       .reduce((a, x) => a + Number(x.monto), 0)
     const variacion = totalAnt > 0 ? ((total - totalAnt) / totalAnt) * 100 : null
+
+    const sumaMes = (lista, k) => lista.filter((x) => String(x.fecha).slice(0, 7) === k).reduce((a, x) => a + Number(x.monto), 0)
+    const ingresosMes = sumaMes(ingresos, actual)
+    const balance = ingresosMes - total
+    const pctAhorro = ingresosMes > 0 ? (balance / ingresosMes) * 100 : null
 
     const activas = subs.filter((x) => x.activa)
     const fijo = activas.reduce((a, x) => a + Number(x.monto_estimado || 0), 0)
@@ -111,13 +120,13 @@ export default function Dashboard() {
       const k = claveMes(m.anio, m.mes)
       evolucion.push({
         mes: MESES[m.mes],
-        monto: gastos.filter((x) => String(x.fecha).slice(0, 7) === k).reduce((a, x) => a + Number(x.monto), 0),
-        actual: i === 0
+        gastos: sumaMes(gastos, k),
+        ingresos: sumaMes(ingresos, k)
       })
     }
 
-    return { total, variacion, fijo, cantidadSubs: activas.length, esMesActual, proyeccion: total + pendientes, pendientes, categoriasArr, mediosArr, evolucion, cantidad: delMes.length }
-  }, [gastos, categorias, subs, sel])
+    return { total, ingresosMes, balance, pctAhorro, variacion, fijo, cantidadSubs: activas.length, esMesActual, proyeccion: total + pendientes, pendientes, categoriasArr, mediosArr, evolucion, cantidad: delMes.length }
+  }, [gastos, categorias, subs, ingresos, sel])
 
   const esFuturo = claveMes(sel.anio, sel.mes) >= claveMes(hoy.getFullYear(), hoy.getMonth())
   const nombreMes = `${MESES_LARGO[sel.mes]} ${sel.anio}`
@@ -144,14 +153,35 @@ export default function Dashboard() {
         <>
           <div className="dash-ticket">
             <div className="dash-fila principal">
-              <span>Gastaste en {MESES_LARGO[sel.mes]}</span>
-              <strong>{pesos(datos.total)}</strong>
+              <span>Balance de {MESES_LARGO[sel.mes]}</span>
+              <strong className={datos.balance < 0 ? 'negativo' : ''}>
+                {datos.balance < 0 ? '- ' : ''}{pesos(Math.abs(datos.balance))}
+              </strong>
             </div>
-            {datos.variacion !== null && (
-              <p className={`dash-var ${datos.variacion > 0 ? 'sube' : 'baja'}`}>
-                {datos.variacion > 0 ? '▲' : '▼'} {Math.abs(datos.variacion).toFixed(0)}% respecto del mes anterior
+            {datos.pctAhorro !== null ? (
+              <p className={`dash-var ${datos.balance < 0 ? 'sube' : 'baja'}`}>
+                {datos.balance < 0
+                  ? `Gastaste ${Math.abs(datos.pctAhorro).toFixed(0)}% más de lo que entró`
+                  : `Ahorraste el ${datos.pctAhorro.toFixed(0)}% de lo que entró`}
               </p>
+            ) : (
+              <p className="dash-var">Cargá tus ingresos para ver cuánto ahorrás.</p>
             )}
+            <div className="dash-fila">
+              <span>Ingresos</span>
+              <span className="dash-ing">+ {pesos(datos.ingresosMes)}</span>
+            </div>
+            <div className="dash-fila">
+              <span>
+                Gastos
+                {datos.variacion !== null && (
+                  <small className={`dash-mini ${datos.variacion > 0 ? 'sube' : 'baja'}`}>
+                    {' '}{datos.variacion > 0 ? '▲' : '▼'} {Math.abs(datos.variacion).toFixed(0)}% vs mes anterior
+                  </small>
+                )}
+              </span>
+              <span>- {pesos(datos.total)}</span>
+            </div>
             <div className="dash-fila">
               <span>Cantidad de gastos</span>
               <span>{datos.cantidad}</span>
@@ -200,18 +230,16 @@ export default function Dashboard() {
           )}
 
           <div className="dash-bloque">
-            <h3>Últimos 6 meses</h3>
+            <h3>Ingresos y gastos, últimos 6 meses</h3>
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={datos.evolucion} margin={{ top: 10, right: 10, left: 10 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="mes" tick={{ fontSize: 12, fontFamily: 'IBM Plex Mono' }} />
                 <YAxis tickFormatter={(v) => `$${Math.round(v / 1000)}k`} tick={{ fontSize: 11, fontFamily: 'IBM Plex Mono' }} />
                 <Tooltip formatter={(v) => pesos(v)} />
-                <Bar dataKey="monto" radius={[4, 4, 0, 0]}>
-                  {datos.evolucion.map((e, i) => (
-                    <Cell key={i} fill={e.actual ? DORADO : VERDE} />
-                  ))}
-                </Bar>
+                <Legend wrapperStyle={{ fontFamily: 'IBM Plex Mono', fontSize: 12 }} />
+                <Bar dataKey="ingresos" name="Ingresos" fill={VERDE} radius={[4, 4, 0, 0]} />
+                <Bar dataKey="gastos" name="Gastos" fill={DORADO} radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>

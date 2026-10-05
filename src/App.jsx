@@ -4,6 +4,7 @@ import Auth from './Auth'
 import GastoForm from './GastoForm'
 import GastoList from './GastoList'
 import Suscripciones from './Suscripciones'
+import Ingresos from './Ingresos'
 import AlertaBanner from './AlertaBanner'
 import Dashboard from './Dashboard'
 import Tutorial from './Tutorial'
@@ -13,6 +14,7 @@ import './App.css'
 const TABS = [
   { id: 'cargar', label: 'Cargar' },
   { id: 'gastos', label: 'Mis gastos' },
+  { id: 'ingresos', label: 'Ingresos' },
   { id: 'suscripciones', label: 'Suscripciones' },
   { id: 'resumen', label: 'Resumen' },
 ]
@@ -89,6 +91,13 @@ function App() {
           />
         )}
         {tab === 'gastos' && <GastoList usuarioId={session.user.id} refreshKey={refreshKey} />}
+        {tab === 'ingresos' && (
+          <Ingresos
+            usuarioId={session.user.id}
+            refreshKey={refreshKey}
+            onCambio={() => setRefreshKey((k) => k + 1)}
+          />
+        )}
         {tab === 'suscripciones' && (
           <Suscripciones
             usuarioId={session.user.id}

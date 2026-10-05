@@ -42,3 +42,10 @@
   .dash-fila { font-size: .82rem; }
   .dash-fila.principal { flex-direction: column; }
 }
+
+/* ===== Balance e ingresos ===== */
+.dash-fila.principal strong.negativo { color: #9a2a1d; }
+.dash-ing { color: #14532D; font-weight: 600; }
+.dash-mini { font-size: .78rem; }
+.dash-mini.sube { color: #9a2a1d; }
+.dash-mini.baja { color: #14532D; }
