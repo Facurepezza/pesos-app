@@ -3,6 +3,7 @@ import { supabase } from './supabaseClient'
 import Avatar from './Avatar'
 import Icono from './Iconos'
 import { useToast } from './Toast'
+import Fijos from './Fijos'
 import { plata, claveMes, mesDesplazado, fechaLinda, hoyISO, MESES_LARGO, CATEGORIAS, CONCEPTOS_INGRESO, MEDIOS } from './utils'
 
 export default function Movimientos({ usuarioId, refreshKey, oculto, onCambio }) {
@@ -17,6 +18,7 @@ export default function Movimientos({ usuarioId, refreshKey, oculto, onCambio })
   const [recarga, setRecarga] = useState(0)
   const [abierto, setAbierto] = useState(null) // id de la fila con acciones abiertas
   const [editando, setEditando] = useState(null)
+  const [verFijos, setVerFijos] = useState(false)
   const avisar = useToast()
 
   const mesKey = claveMes(sel.anio, sel.mes)
@@ -30,10 +32,10 @@ export default function Movimientos({ usuarioId, refreshKey, oculto, onCambio })
       const hasta = `${claveMes(sig.anio, sig.mes)}-01`
       const [g, i] = await Promise.all([
         supabase.from('gastos')
-          .select('id, monto, fecha, descripcion, medio_pago, moneda, monto_original, categoria_id, tarjeta_id, compra_id, cuota_num, cuotas_total, categorias(nombre), tarjetas(alias)')
+          .select('id, monto, fecha, descripcion, medio_pago, moneda, monto_original, categoria_id, tarjeta_id, compra_id, cuota_num, cuotas_total, recurrente_id, categorias(nombre), tarjetas(alias)')
           .eq('usuario_id', usuarioId).gte('fecha', desde).lt('fecha', hasta).order('fecha', { ascending: false }),
         supabase.from('ingresos')
-          .select('id, monto, fecha, concepto, descripcion')
+          .select('id, monto, fecha, concepto, descripcion, recurrente_id')
           .eq('usuario_id', usuarioId).gte('fecha', desde).lt('fecha', hasta).order('fecha', { ascending: false }),
       ])
       setGastos(g.data || [])
@@ -51,13 +53,14 @@ export default function Movimientos({ usuarioId, refreshKey, oculto, onCambio })
         g.categorias?.nombre,
         g.tarjetas?.alias || MEDIOS[g.medio_pago],
         g.cuotas_total > 1 ? `cuota ${g.cuota_num} de ${g.cuotas_total}` : null,
+        g.recurrente_id ? 'fijo' : null,
         g.moneda !== 'ARS' && g.monto_original ? plata(g.monto_original, oculto, g.moneda) : null,
       ].filter(Boolean).join(' · '),
       monto: -Number(g.monto), moneda: g.moneda, medio: g.tarjeta_id ? 't:' + g.tarjeta_id : g.medio_pago,
     }))),
     ...(vista === 'gastos' ? [] : ingresos.map((i) => ({
       tipo: 'ingreso', id: i.id, key: 'i' + i.id, fecha: i.fecha, raw: i, categoria: i.concepto,
-      nombre: i.descripcion || i.concepto, detalle: `Ingreso · ${i.concepto}`, monto: Number(i.monto), medio: 'ingreso',
+      nombre: i.descripcion || i.concepto, detalle: `Ingreso · ${i.concepto}${i.recurrente_id ? ' · fijo' : ''}`, monto: Number(i.monto), medio: 'ingreso',
     }))),
   ]
     .filter((m) => !filtroMedio || (filtroMedio === 'tarjeta' ? m.medio.startsWith('t:') || m.medio === 'tarjeta' : m.medio === filtroMedio))
@@ -175,9 +178,14 @@ export default function Movimientos({ usuarioId, refreshKey, oculto, onCambio })
         </div>
       )}
 
-      <button type="button" className="pz-btn pz-btn-claro" onClick={exportar} disabled={lista.length === 0}>
-        <Icono nombre="descargar" size={16} /> Descargar en Excel
-      </button>
+      <div className="pz-dos">
+        <button type="button" className="pz-btn pz-btn-claro" onClick={() => setVerFijos(true)}>
+          <Icono nombre="repetir" size={16} /> Fijos del mes
+        </button>
+        <button type="button" className="pz-btn pz-btn-claro" onClick={exportar} disabled={lista.length === 0}>
+          <Icono nombre="descargar" size={16} /> Excel
+        </button>
+      </div>
 
       <div className="pz-totales">
         {vista !== 'gastos' && <div><span>Entró</span><b className="pos">+ {plata(totalIngresos, oculto)}</b></div>}
@@ -211,6 +219,10 @@ export default function Movimientos({ usuarioId, refreshKey, oculto, onCambio })
           </div>
         ))}
       </section>
+
+      {verFijos && (
+        <Fijos usuarioId={usuarioId} oculto={oculto} onCerrar={() => setVerFijos(false)} onCambio={onCambio} />
+      )}
 
       {editando && (
         <EditarMovimiento usuarioId={usuarioId} mov={editando} onCerrar={() => setEditando(null)}

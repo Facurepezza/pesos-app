@@ -10,6 +10,7 @@ import Inicio from './Inicio'
 import CargarSheet from './CargarSheet'
 import Icono from './Iconos'
 import { ordenarDatos } from './ordenarDatos'
+import { generarRecurrentes } from './recurrentes'
 import NuevaClave from './NuevaClave'
 import InstalarApp from './InstalarApp'
 import Perfil from './Perfil'
@@ -64,7 +65,14 @@ function PesosApp() {
   useEffect(() => {
     if (!uidSesion) return
     ordenarDatos(uidSesion).then((cambio) => { if (cambio) setRefreshKey((k) => k + 1) })
-  }, [uidSesion])
+    // Carga solos los gastos e ingresos fijos que ya tocaron este mes
+    generarRecurrentes(uidSesion).then((n) => {
+      if (n > 0) {
+        setRefreshKey((k) => k + 1)
+        avisar(`Se cargaron solos ${n} movimiento${n === 1 ? '' : 's'} fijo${n === 1 ? '' : 's'} ✓`)
+      }
+    })
+  }, [uidSesion, avisar])
 
   if (cargandoSesion) return <p className="cargando">Cargando...</p>
   if (recuperando) return <NuevaClave onListo={() => setRecuperando(false)} />
@@ -123,7 +131,7 @@ function PesosApp() {
 
       {hoja && (
         <CargarSheet usuarioId={uid} tipoInicial={hoja} onCerrar={() => setHoja(null)}
-          onGuardado={() => { setHoja(null); refrescar(); avisar('Listo, quedó guardado ✓') }} />
+          onGuardado={(texto, tipo) => { setHoja(null); refrescar(); avisar(texto || 'Listo, quedó guardado ✓', { tipo }) }} />
       )}
 
       {perfil && (

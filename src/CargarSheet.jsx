@@ -3,7 +3,7 @@ import { supabase } from './supabaseClient'
 import Autocompletar from './Autocompletar'
 import Avatar from './Avatar'
 import Icono from './Iconos'
-import { plata, hoyISO, sumarMeses, CATEGORIAS, CONCEPTOS_INGRESO, traerCotizaciones } from './utils'
+import { plata, hoyISO, sumarMeses, claveMes, CATEGORIAS, CONCEPTOS_INGRESO, traerCotizaciones } from './utils'
 
 const CUOTAS = [1, 3, 6, 12]
 
@@ -22,6 +22,7 @@ export default function CargarSheet({ usuarioId, tipoInicial = 'gasto', onCerrar
   const [recientes, setRecientes] = useState([])
   const [cot, setCot] = useState(null)
   const [cotManual, setCotManual] = useState('')
+  const [repetir, setRepetir] = useState(false)
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState(null)
 
@@ -75,49 +76,95 @@ export default function CargarSheet({ usuarioId, tipoInicial = 'gasto', onCerrar
     return nueva.id
   }
 
+  // Después de guardar un gasto: ¿se pasó del presupuesto de esa categoría?
+  async function chequearPresupuesto(categoriaId) {
+    const ahora = new Date()
+    const mes = claveMes(ahora.getFullYear(), ahora.getMonth())
+    if (!categoria || !categoriaId || fecha.slice(0, 7) !== mes) return null
+    const { data: tope } = await supabase.from('presupuestos').select('monto')
+      .eq('usuario_id', usuarioId).eq('categoria', categoria).maybeSingle()
+    if (!tope) return null
+    const { data: delMes } = await supabase.from('gastos').select('monto')
+      .eq('usuario_id', usuarioId).eq('categoria_id', categoriaId).gte('fecha', `${mes}-01`).lte('fecha', hoyISO())
+    const gastado = (delMes || []).reduce((a, g) => a + Number(g.monto), 0)
+    const pct = (gastado / Number(tope.monto)) * 100
+    if (pct >= 100) return { texto: `Guardado. Ojo: te pasaste del presupuesto de ${categoria} (${plata(gastado)} de ${plata(tope.monto)})`, tipo: 'error' }
+    if (pct >= 80) return { texto: `Guardado. Ya usaste el ${Math.round(pct)}% de tu presupuesto de ${categoria}`, tipo: 'aviso' }
+    return null
+  }
+
   async function guardar() {
     setError(null)
     if (!valor || valor <= 0) return setError('Poné un monto mayor a 0.')
     if (faltaCot) return setError('Falta la cotización para convertir a pesos.')
     setGuardando(true)
     try {
+      const montoPesos = Math.round(enPesos * 100) / 100
+      const repite = repetir && !(esTarjeta && cuotas > 1)
       if (tipo === 'ingreso') {
+        let recurrenteId = null
+        if (repite) {
+          const { data: r, error: er } = await supabase.from('recurrentes').insert({
+            usuario_id: usuarioId, tipo: 'ingreso', descripcion: descripcion.trim() || concepto, monto: montoPesos,
+            dia: Number(fecha.slice(8, 10)), ultimo_mes: fecha.slice(0, 7), concepto,
+          }).select('id').single()
+          if (er) throw er
+          recurrenteId = r.id
+        }
         const { error: err } = await supabase.from('ingresos').insert({
-          usuario_id: usuarioId, monto: Math.round(enPesos * 100) / 100, fecha, concepto,
-          descripcion: descripcion.trim() || null,
+          usuario_id: usuarioId, monto: montoPesos, fecha, concepto,
+          descripcion: descripcion.trim() || null, recurrente_id: recurrenteId,
         })
         if (err) throw err
-      } else {
-        const categoriaId = categoria ? await obtenerOCrear('categorias', 'nombre', categoria) : null
-        let tarjetaId = null
-        if (medio.startsWith('t:')) tarjetaId = medio.slice(2)
-        if (medio === 'nueva') {
-          if (!nuevaTarjeta.trim()) throw new Error('Escribí el nombre de la tarjeta nueva.')
-          tarjetaId = await obtenerOCrear('tarjetas', 'alias', nuevaTarjeta, { tipo: 'credito' })
-        }
-        const medioPago = esTarjeta ? 'tarjeta' : medio
-        const n = esTarjeta ? cuotas : 1
-        const base = {
-          usuario_id: usuarioId, categoria_id: categoriaId, tarjeta_id: tarjetaId, medio_pago: medioPago,
-          descripcion: descripcion.trim() || null, moneda,
-          monto_original: moneda === 'ARS' ? null : valor,
-          cotizacion: moneda === 'ARS' ? null : tasa,
-        }
-        let filas
-        if (n > 1) {
-          const compraId = crypto.randomUUID()
-          const porCuota = Math.round((enPesos / n) * 100) / 100
-          filas = Array.from({ length: n }, (_, i) => ({
-            ...base, monto: porCuota, fecha: sumarMeses(fecha, i),
-            compra_id: compraId, cuota_num: i + 1, cuotas_total: n,
-          }))
-        } else {
-          filas = [{ ...base, monto: Math.round(enPesos * 100) / 100, fecha }]
-        }
-        const { error: err } = await supabase.from('gastos').insert(filas)
-        if (err) throw err
+        onGuardado(repite ? 'Listo. Se va a cargar solo todos los meses ✓' : null)
+        return
       }
-      onGuardado()
+
+      const categoriaId = categoria ? await obtenerOCrear('categorias', 'nombre', categoria) : null
+      let tarjetaId = null
+      if (medio.startsWith('t:')) tarjetaId = medio.slice(2)
+      if (medio === 'nueva') {
+        if (!nuevaTarjeta.trim()) throw new Error('Escribí el nombre de la tarjeta nueva.')
+        tarjetaId = await obtenerOCrear('tarjetas', 'alias', nuevaTarjeta, { tipo: 'credito' })
+      }
+      const medioPago = esTarjeta ? 'tarjeta' : medio
+      const n = esTarjeta ? cuotas : 1
+
+      let recurrenteId = null
+      if (repite) {
+        const { data: r, error: er } = await supabase.from('recurrentes').insert({
+          usuario_id: usuarioId, tipo: 'gasto', descripcion: descripcion.trim() || categoria || 'Gasto fijo', monto: montoPesos,
+          dia: Number(fecha.slice(8, 10)), ultimo_mes: fecha.slice(0, 7),
+          categoria_id: categoriaId, tarjeta_id: tarjetaId, medio_pago: medioPago,
+        }).select('id').single()
+        if (er) throw er
+        recurrenteId = r.id
+      }
+
+      const base = {
+        usuario_id: usuarioId, categoria_id: categoriaId, tarjeta_id: tarjetaId, medio_pago: medioPago,
+        descripcion: descripcion.trim() || null, moneda,
+        monto_original: moneda === 'ARS' ? null : valor,
+        cotizacion: moneda === 'ARS' ? null : tasa,
+        recurrente_id: recurrenteId,
+      }
+      let filas
+      if (n > 1) {
+        const compraId = crypto.randomUUID()
+        const porCuota = Math.round((enPesos / n) * 100) / 100
+        filas = Array.from({ length: n }, (_, i) => ({
+          ...base, monto: porCuota, fecha: sumarMeses(fecha, i),
+          compra_id: compraId, cuota_num: i + 1, cuotas_total: n,
+        }))
+      } else {
+        filas = [{ ...base, monto: montoPesos, fecha }]
+      }
+      const { error: err } = await supabase.from('gastos').insert(filas)
+      if (err) throw err
+
+      const alerta = await chequearPresupuesto(categoriaId)
+      if (alerta) onGuardado(alerta.texto, alerta.tipo)
+      else onGuardado(repite ? 'Listo. Se va a cargar solo todos los meses ✓' : null)
     } catch (e) {
       setError(e.message)
       setGuardando(false)
@@ -261,6 +308,17 @@ export default function CargarSheet({ usuarioId, tipoInicial = 'gasto', onCerrar
           <label className="pz-label" htmlFor="fecha">Fecha</label>
           <input id="fecha" className="pz-input" type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />
         </div>
+
+        {!(esTarjeta && cuotas > 1) && (
+          <label className="pz-switch">
+            <input type="checkbox" checked={repetir} onChange={(e) => setRepetir(e.target.checked)} />
+            <span className="pz-switch-pista" aria-hidden="true"><span /></span>
+            <span className="pz-switch-txt">
+              <b>Se repite todos los meses</b>
+              <small>{repetir ? `Se va a cargar solo cada día ${Number(fecha.slice(8, 10))}.` : 'Ideal para sueldo, alquiler, expensas o la cuota del gimnasio.'}</small>
+            </span>
+          </label>
+        )}
 
         {error && <p className="pz-error">{error}</p>}
 
