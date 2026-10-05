@@ -1,40 +1,24 @@
 import { useEffect, useMemo, useState } from 'react'
-import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend
-} from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import { supabase } from './supabaseClient'
-import './Dashboard.css'
+import Avatar from './Avatar'
+import Icono from './Iconos'
+import { plata, claveMes, mesDesplazado, hoyISO, MESES, MESES_LARGO, MEDIOS, COLORES_CAT } from './utils'
 
-// ⚠️ Si tus tablas o columnas se llaman distinto, cambialo SOLO acá arriba
-const T_GASTOS = 'gastos'
-const T_CATEGORIAS = 'categorias'
-const T_SUSCRIPCIONES = 'suscripciones'
-const T_INGRESOS = 'ingresos'
-const C_VENCIMIENTO = 'proximo_vencimiento'
+// Pantalla de métricas con el diseño nuevo de PESOS
+const VERDE = '#0F4D35'
+const ROJO = '#B4400C'
+const COLOR_MEDIO = { Efectivo: '#3E8E68', 'Mercado Pago': '#0E7490', Tarjeta: '#0F4D35' }
 
-const VERDE = '#14532D'
-const DORADO = '#C9971F'
-const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
-const MESES_LARGO = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
-const MEDIOS = { efectivo: 'Efectivo', mercado_pago: 'Mercado Pago', tarjeta: 'Tarjeta' }
+const sumar = (lista) => lista.reduce((a, x) => a + Number(x.monto || 0), 0)
+const delMesDe = (lista, k) => lista.filter((x) => String(x.fecha).slice(0, 7) === k)
 
-const pesos = (n) =>
-  new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(n || 0)
-
-const claveMes = (anio, mes) => `${anio}-${String(mes + 1).padStart(2, '0')}`
-
-function mesDesplazado(anio, mes, delta) {
-  const d = new Date(anio, mes + delta, 1)
-  return { anio: d.getFullYear(), mes: d.getMonth() }
-}
-
-export default function Dashboard() {
+export default function Dashboard({ usuarioId, refreshKey, oculto = false, onVolver }) {
   const hoy = new Date()
   const [sel, setSel] = useState({ anio: hoy.getFullYear(), mes: hoy.getMonth() })
   const [gastos, setGastos] = useState([])
-  const [categorias, setCategorias] = useState({})
-  const [subs, setSubs] = useState([])
   const [ingresos, setIngresos] = useState([])
+  const [subs, setSubs] = useState([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState('')
 
@@ -43,208 +27,242 @@ export default function Dashboard() {
       setCargando(true)
       setError('')
       const inicio = mesDesplazado(sel.anio, sel.mes, -5)
+      const fin = mesDesplazado(sel.anio, sel.mes, 1)
       const desde = `${claveMes(inicio.anio, inicio.mes)}-01`
-
-      const [g, c, s, ing] = await Promise.all([
-        supabase.from(T_GASTOS).select('monto, fecha, medio_pago, categoria_id').gte('fecha', desde),
-        supabase.from(T_CATEGORIAS).select('id, nombre'),
-        supabase.from(T_SUSCRIPCIONES).select(`monto_estimado, activa, ${C_VENCIMIENTO}`),
-        supabase.from(T_INGRESOS).select('monto, fecha').gte('fecha', desde)
+      const hasta = `${claveMes(fin.anio, fin.mes)}-01`
+      const [g, ing, s] = await Promise.all([
+        supabase.from('gastos').select('id, monto, fecha, medio_pago, descripcion, categorias(nombre)')
+          .eq('usuario_id', usuarioId).gte('fecha', desde).lt('fecha', hasta),
+        supabase.from('ingresos').select('monto, fecha').eq('usuario_id', usuarioId).gte('fecha', desde).lt('fecha', hasta),
+        supabase.from('suscripciones').select('nombre, monto_estimado, proximo_vencimiento').eq('usuario_id', usuarioId).eq('activa', true),
       ])
-
-      const falla = g.error || c.error || s.error || ing.error
-      if (falla) {
-        setError(falla.message)
-      } else {
+      const falla = g.error || ing.error || s.error
+      if (falla) setError(falla.message)
+      else {
         setGastos(g.data || [])
-        setCategorias(Object.fromEntries((c.data || []).map((x) => [x.id, x.nombre])))
-        setSubs(s.data || [])
         setIngresos(ing.data || [])
+        setSubs(s.data || [])
       }
       setCargando(false)
     }
     cargar()
-  }, [sel])
+  }, [usuarioId, sel, refreshKey])
 
-  const datos = useMemo(() => {
-    const actual = claveMes(sel.anio, sel.mes)
-    const ant = mesDesplazado(sel.anio, sel.mes, -1)
-    const anterior = claveMes(ant.anio, ant.mes)
+  const d = useMemo(() => {
+    const k = claveMes(sel.anio, sel.mes)
+    const a = mesDesplazado(sel.anio, sel.mes, -1)
+    const kAnt = claveMes(a.anio, a.mes)
+    const esMesActual = k === claveMes(hoy.getFullYear(), hoy.getMonth())
 
-    const delMes = gastos.filter((x) => String(x.fecha).slice(0, 7) === actual)
-    const total = delMes.reduce((a, x) => a + Number(x.monto), 0)
-    const totalAnt = gastos
-      .filter((x) => String(x.fecha).slice(0, 7) === anterior)
-      .reduce((a, x) => a + Number(x.monto), 0)
+    const gMes = delMesDe(gastos, k)
+    const total = sumar(gMes)
+    const totalAnt = sumar(delMesDe(gastos, kAnt))
+    const ingMes = sumar(delMesDe(ingresos, k))
+    const balance = ingMes - total
+    const pctAhorro = ingMes > 0 ? (balance / ingMes) * 100 : null
     const variacion = totalAnt > 0 ? ((total - totalAnt) / totalAnt) * 100 : null
 
-    const sumaMes = (lista, k) => lista.filter((x) => String(x.fecha).slice(0, 7) === k).reduce((a, x) => a + Number(x.monto), 0)
-    const ingresosMes = sumaMes(ingresos, actual)
-    const balance = ingresosMes - total
-    const pctAhorro = ingresosMes > 0 ? (balance / ingresosMes) * 100 : null
+    const diasMes = new Date(sel.anio, sel.mes + 1, 0).getDate()
+    const diasPasados = esMesActual ? hoy.getDate() : diasMes
+    const porDia = diasPasados ? total / diasPasados : 0
+    const aEsteRitmo = porDia * diasMes
 
-    const activas = subs.filter((x) => x.activa)
-    const fijo = activas.reduce((a, x) => a + Number(x.monto_estimado || 0), 0)
+    const hoyTxt = hoyISO()
+    const pendientes = subs.filter((x) => String(x.proximo_vencimiento || '').slice(0, 7) === k && x.proximo_vencimiento >= hoyTxt)
+    const fijoMensual = subs.reduce((s, x) => s + Number(x.monto_estimado || 0), 0)
 
-    // Proyección: solo tiene sentido para el mes en curso
-    const esMesActual = actual === claveMes(hoy.getFullYear(), hoy.getMonth())
-    const hoyTxt = hoy.toISOString().slice(0, 10)
-    const pendientes = activas
-      .filter((x) => {
-        const v = String(x[C_VENCIMIENTO] || '')
-        return v.slice(0, 7) === actual && v >= hoyTxt
-      })
-      .reduce((a, x) => a + Number(x.monto_estimado || 0), 0)
+    // Por categoría, con comparación contra el mes anterior
+    const cats = {}
+    const catsAnt = {}
+    gMes.forEach((x) => { const n = x.categorias?.nombre || 'Sin categoría'; cats[n] = (cats[n] || 0) + Number(x.monto) })
+    delMesDe(gastos, kAnt).forEach((x) => { const n = x.categorias?.nombre || 'Sin categoría'; catsAnt[n] = (catsAnt[n] || 0) + Number(x.monto) })
+    const categorias = Object.entries(cats).map(([nombre, monto]) => ({
+      nombre, monto, pct: total ? (monto / total) * 100 : 0,
+      vsAnt: catsAnt[nombre] ? ((monto - catsAnt[nombre]) / catsAnt[nombre]) * 100 : null,
+    })).sort((x, y) => y.monto - x.monto).map((c, i) => ({ ...c, color: COLORES_CAT[i % COLORES_CAT.length] }))
 
-    const porCat = {}
-    delMes.forEach((x) => {
-      const n = categorias[x.categoria_id] || 'Sin categoría'
-      porCat[n] = (porCat[n] || 0) + Number(x.monto)
+    const medios = {}
+    gMes.forEach((x) => { const n = MEDIOS[x.medio_pago] || 'Otro'; medios[n] = (medios[n] || 0) + Number(x.monto) })
+    const mediosArr = Object.entries(medios).map(([nombre, monto]) => ({ nombre, monto, pct: total ? (monto / total) * 100 : 0 }))
+      .sort((x, y) => y.monto - x.monto)
+
+    const evolucion = Array.from({ length: 6 }, (_, i) => {
+      const m = mesDesplazado(sel.anio, sel.mes, i - 5)
+      const km = claveMes(m.anio, m.mes)
+      return { mes: MESES[m.mes], Ingresos: sumar(delMesDe(ingresos, km)), Gastos: sumar(delMesDe(gastos, km)) }
     })
-    const categoriasArr = Object.entries(porCat)
-      .map(([nombre, monto]) => ({ nombre, monto }))
-      .sort((a, b) => b.monto - a.monto)
 
-    const porMedio = {}
-    delMes.forEach((x) => {
-      const n = MEDIOS[x.medio_pago] || x.medio_pago || 'Otro'
-      porMedio[n] = (porMedio[n] || 0) + Number(x.monto)
-    })
-    const mediosArr = Object.entries(porMedio)
-      .map(([nombre, monto]) => ({ nombre, monto, pct: total ? (monto / total) * 100 : 0 }))
-      .sort((a, b) => b.monto - a.monto)
+    const grandes = [...gMes].sort((x, y) => Number(y.monto) - Number(x.monto)).slice(0, 5)
 
-    const evolucion = []
-    for (let i = -5; i <= 0; i++) {
-      const m = mesDesplazado(sel.anio, sel.mes, i)
-      const k = claveMes(m.anio, m.mes)
-      evolucion.push({
-        mes: MESES[m.mes],
-        gastos: sumaMes(gastos, k),
-        ingresos: sumaMes(ingresos, k)
-      })
+    return {
+      esMesActual, total, ingMes, balance, pctAhorro, variacion, porDia, aEsteRitmo, diasMes,
+      pendientes: sumar(pendientes.map((x) => ({ monto: x.monto_estimado }))), cantPendientes: pendientes.length,
+      fijoMensual, cantSubs: subs.length, categorias, mediosArr, evolucion, grandes, cantidad: gMes.length,
     }
-
-    return { total, ingresosMes, balance, pctAhorro, variacion, fijo, cantidadSubs: activas.length, esMesActual, proyeccion: total + pendientes, pendientes, categoriasArr, mediosArr, evolucion, cantidad: delMes.length }
-  }, [gastos, categorias, subs, ingresos, sel])
+  }, [gastos, ingresos, subs, sel]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const esFuturo = claveMes(sel.anio, sel.mes) >= claveMes(hoy.getFullYear(), hoy.getMonth())
-  const nombreMes = `${MESES_LARGO[sel.mes]} ${sel.anio}`
+  const gastadoPct = d.ingMes > 0 ? Math.min(100, (d.total / d.ingMes) * 100) : 0
+  const p = (n) => plata(n, oculto)
 
   return (
-    <section className="dash">
-      <header className="dash-top">
-        <h2 className="dash-titulo">Resumen de {nombreMes}</h2>
-        <div className="dash-nav">
-          <button onClick={() => setSel(mesDesplazado(sel.anio, sel.mes, -1))} aria-label="Mes anterior">‹</button>
-          <button onClick={() => setSel(mesDesplazado(sel.anio, sel.mes, 1))} disabled={esFuturo} aria-label="Mes siguiente">›</button>
+    <div className="pz-screen">
+      <div className="pz-top">
+        <button type="button" className="pz-icon-btn" onClick={onVolver} aria-label="Volver"><Icono nombre="izq" size={20} /></button>
+        <div className="pz-mes">
+          <button type="button" className="pz-icon-btn pz-icon-chico" onClick={() => setSel(mesDesplazado(sel.anio, sel.mes, -1))} aria-label="Mes anterior">
+            <Icono nombre="izq" size={18} />
+          </button>
+          <span>{MESES_LARGO[sel.mes]} {sel.anio}</span>
+          <button type="button" className="pz-icon-btn pz-icon-chico" onClick={() => setSel(mesDesplazado(sel.anio, sel.mes, 1))} disabled={esFuturo} aria-label="Mes siguiente">
+            <Icono nombre="der" size={18} />
+          </button>
         </div>
-      </header>
+      </div>
 
-      {error && (
-        <p className="dash-error">
-          No se pudieron leer los datos: {error}. Revisá que los nombres de las tablas al principio de Dashboard.jsx coincidan con los de Supabase.
-        </p>
-      )}
+      <h1 className="pz-h1">Métricas</h1>
 
-      {cargando ? (
-        <p className="dash-vacio">Cargando resumen...</p>
-      ) : (
+      {error && <p className="pz-error">No se pudieron leer los datos: {error}</p>}
+
+      {cargando ? <p className="pz-vacio">Cargando métricas...</p> : (
         <>
-          <div className="dash-ticket">
-            <div className="dash-fila principal">
+          {/* Balance */}
+          <section className="pz-hero">
+            <div className="pz-hero-top">
               <span>Balance de {MESES_LARGO[sel.mes]}</span>
-              <strong className={datos.balance < 0 ? 'negativo' : ''}>
-                {datos.balance < 0 ? '- ' : ''}{pesos(Math.abs(datos.balance))}
-              </strong>
+              {d.pctAhorro !== null && (
+                <span className={`pz-hero-badge ${d.balance < 0 ? 'mal' : ''}`}>
+                  {d.balance < 0 ? `Gastaste ${Math.abs(d.pctAhorro).toFixed(0)}% de más` : `Ahorrás el ${d.pctAhorro.toFixed(0)}%`}
+                </span>
+              )}
             </div>
-            {datos.pctAhorro !== null ? (
-              <p className={`dash-var ${datos.balance < 0 ? 'sube' : 'baja'}`}>
-                {datos.balance < 0
-                  ? `Gastaste ${Math.abs(datos.pctAhorro).toFixed(0)}% más de lo que entró`
-                  : `Ahorraste el ${datos.pctAhorro.toFixed(0)}% de lo que entró`}
-              </p>
-            ) : (
-              <p className="dash-var">Cargá tus ingresos para ver cuánto ahorrás.</p>
-            )}
-            <div className="dash-fila">
-              <span>Ingresos</span>
-              <span className="dash-ing">+ {pesos(datos.ingresosMes)}</span>
+            <div className="pz-hero-monto">{d.balance < 0 && !oculto ? '- ' : ''}{p(Math.abs(d.balance))}</div>
+            {d.ingMes > 0 && <div className="pz-barra"><div style={{ width: `${gastadoPct}%` }} /></div>}
+            <div className="pz-hero-grid">
+              <div className="pz-hero-mini"><span>Entró</span><b>{p(d.ingMes)}</b></div>
+              <div className="pz-hero-mini"><span>Salió</span><b>{p(d.total)}</b></div>
             </div>
-            <div className="dash-fila">
-              <span>
-                Gastos
-                {datos.variacion !== null && (
-                  <small className={`dash-mini ${datos.variacion > 0 ? 'sube' : 'baja'}`}>
-                    {' '}{datos.variacion > 0 ? '▲' : '▼'} {Math.abs(datos.variacion).toFixed(0)}% vs mes anterior
-                  </small>
-                )}
-              </span>
-              <span>- {pesos(datos.total)}</span>
+          </section>
+
+          {/* Números rápidos */}
+          <div className="pz-totales">
+            <div><span>Por día</span><b>{p(d.porDia)}</b></div>
+            <div>
+              <span>Vs mes anterior</span>
+              <b className={d.variacion === null ? '' : d.variacion > 0 ? 'pz-sube' : 'pos'}>
+                {d.variacion === null ? '-' : `${d.variacion > 0 ? '▲' : '▼'} ${Math.abs(d.variacion).toFixed(0)}%`}
+              </b>
             </div>
-            <div className="dash-fila">
-              <span>Cantidad de gastos</span>
-              <span>{datos.cantidad}</span>
-            </div>
-            <div className="dash-fila">
-              <span>Gasto fijo mensual ({datos.cantidadSubs} suscripciones activas)</span>
-              <span>{pesos(datos.fijo)}</span>
-            </div>
-            {datos.esMesActual && (
-              <div className="dash-fila proyeccion">
-                <span>Si pagás lo que falta vencer este mes, cerrás en</span>
-                <strong>{pesos(datos.proyeccion)}</strong>
-              </div>
-            )}
+            <div><span>Gastos</span><b>{d.cantidad}</b></div>
           </div>
 
-          {datos.cantidad === 0 ? (
-            <p className="dash-vacio">No cargaste gastos en {MESES_LARGO[sel.mes]}. Cuando lo hagas, acá vas a ver en qué se te va la plata.</p>
-          ) : (
-            <div className="dash-grid">
-              <div className="dash-bloque">
-                <h3>Por categoría</h3>
-                <ResponsiveContainer width="100%" height={Math.max(160, datos.categoriasArr.length * 42)}>
-                  <BarChart data={datos.categoriasArr} layout="vertical" margin={{ left: 10, right: 20 }}>
-                    <XAxis type="number" hide />
-                    <YAxis type="category" dataKey="nombre" width={110} tick={{ fontSize: 12, fontFamily: 'IBM Plex Mono' }} />
-                    <Tooltip formatter={(v) => pesos(v)} />
-                    <Bar dataKey="monto" fill={VERDE} radius={[0, 4, 4, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+          {/* Proyección del mes */}
+          {d.esMesActual && d.total > 0 && (
+            <section className="pz-card pz-metrica-proy">
+              <Icono nombre="grafico" size={22} />
+              <div>
+                <b>A este ritmo cerrás {MESES_LARGO[sel.mes]} en {p(d.aEsteRitmo)}</b>
+                <span>
+                  {d.cantPendientes > 0
+                    ? `Todavía te faltan vencer ${d.cantPendientes} suscripcion${d.cantPendientes === 1 ? '' : 'es'} por ${p(d.pendientes)}.`
+                    : 'No te quedan suscripciones por vencer este mes.'}
+                </span>
               </div>
-
-              <div className="dash-bloque">
-                <h3>Por medio de pago</h3>
-                {datos.mediosArr.map((m) => (
-                  <div key={m.nombre} className="dash-medio">
-                    <div className="dash-medio-txt">
-                      <span>{m.nombre}</span>
-                      <span>{pesos(m.monto)} ({m.pct.toFixed(0)}%)</span>
-                    </div>
-                    <div className="dash-barra"><div style={{ width: `${m.pct}%` }} /></div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            </section>
           )}
 
-          <div className="dash-bloque">
-            <h3>Ingresos y gastos, últimos 6 meses</h3>
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={datos.evolucion} margin={{ top: 10, right: 10, left: 10 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="mes" tick={{ fontSize: 12, fontFamily: 'IBM Plex Mono' }} />
-                <YAxis tickFormatter={(v) => `$${Math.round(v / 1000)}k`} tick={{ fontSize: 11, fontFamily: 'IBM Plex Mono' }} />
-                <Tooltip formatter={(v) => pesos(v)} />
-                <Legend wrapperStyle={{ fontFamily: 'IBM Plex Mono', fontSize: 12 }} />
-                <Bar dataKey="ingresos" name="Ingresos" fill={VERDE} radius={[4, 4, 0, 0]} />
-                <Bar dataKey="gastos" name="Gastos" fill={DORADO} radius={[4, 4, 0, 0]} />
+          {d.cantidad === 0 ? (
+            <p className="pz-vacio">No hay gastos cargados en {MESES_LARGO[sel.mes]}. Cuando cargues, acá vas a ver en qué se te va la plata.</p>
+          ) : (
+            <>
+              {/* Categorías */}
+              <section className="pz-card">
+                <h2 className="pz-h2">En qué se fue</h2>
+                <div className="pz-stack">
+                  {d.categorias.map((c) => <div key={c.nombre} style={{ width: `${c.pct}%`, background: c.color }} title={c.nombre} />)}
+                </div>
+                <div className="pz-cat-lista">
+                  {d.categorias.map((c) => (
+                    <div key={c.nombre} className="pz-fila">
+                      <Avatar nombre={c.nombre} categoria={c.nombre} size={38} />
+                      <div className="pz-fila-txt">
+                        <b>{c.nombre}</b>
+                        <span>
+                          {c.pct.toFixed(0)}% del total
+                          {c.vsAnt !== null && (
+                            <em className={c.vsAnt > 0 ? 'pz-sube' : 'pz-baja'}> · {c.vsAnt > 0 ? '▲' : '▼'} {Math.abs(c.vsAnt).toFixed(0)}%</em>
+                          )}
+                        </span>
+                      </div>
+                      <span className="pz-monto">{p(c.monto)}</span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              {/* Medios de pago */}
+              <section className="pz-card">
+                <h2 className="pz-h2">Cómo pagaste</h2>
+                {d.mediosArr.map((m) => (
+                  <div key={m.nombre} className="pz-pres">
+                    <div className="pz-pres-top">
+                      <b>{m.nombre}</b>
+                      <span className="pz-pres-num">{p(m.monto)} <small>{m.pct.toFixed(0)}%</small></span>
+                    </div>
+                    <div className="pz-pres-barra"><div style={{ width: `${m.pct}%`, background: COLOR_MEDIO[m.nombre] || VERDE }} /></div>
+                  </div>
+                ))}
+              </section>
+
+              {/* Gastos más grandes */}
+              <section className="pz-card pz-card-lista">
+                <div className="pz-card-head"><h2 className="pz-h2">Tus gastos más grandes</h2></div>
+                {d.grandes.map((g) => (
+                  <div key={g.id} className="pz-fila">
+                    <Avatar nombre={g.descripcion || g.categorias?.nombre} categoria={g.categorias?.nombre} size={38} />
+                    <div className="pz-fila-txt">
+                      <b>{g.descripcion || g.categorias?.nombre || 'Gasto'}</b>
+                      <span>{Number(g.fecha.slice(8, 10))} de {MESES_LARGO[Number(g.fecha.slice(5, 7)) - 1]}{g.categorias?.nombre ? ` · ${g.categorias.nombre}` : ''}</span>
+                    </div>
+                    <span className="pz-monto">{p(g.monto)}</span>
+                  </div>
+                ))}
+              </section>
+            </>
+          )}
+
+          {/* Evolución */}
+          <section className="pz-card">
+            <h2 className="pz-h2">Últimos 6 meses</h2>
+            <div className="pz-leyenda pz-leyenda-fila">
+              <div><i style={{ background: VERDE }} /><span>Ingresos</span></div>
+              <div><i style={{ background: ROJO }} /><span>Gastos</span></div>
+            </div>
+            <ResponsiveContainer width="100%" height={210}>
+              <BarChart data={d.evolucion} margin={{ top: 6, right: 0, left: 0, bottom: 0 }} barGap={3}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E1E6DE" />
+                <XAxis dataKey="mes" tickLine={false} axisLine={false} tick={{ fontSize: 12, fontFamily: 'Manrope', fill: '#4B5A51' }} />
+                <YAxis hide={oculto} width={44} tickLine={false} axisLine={false}
+                  tickFormatter={(v) => (v >= 1000000 ? `${(v / 1000000).toFixed(1)}M` : `${Math.round(v / 1000)}k`)}
+                  tick={{ fontSize: 11, fontFamily: 'Manrope', fill: '#4B5A51' }} />
+                <Tooltip formatter={(v) => p(v)} cursor={{ fill: 'rgba(15,77,53,.06)' }}
+                  contentStyle={{ borderRadius: 12, border: '1px solid #E1E6DE', fontFamily: 'Manrope', fontSize: 13 }} />
+                <Bar dataKey="Ingresos" fill={VERDE} radius={[6, 6, 0, 0]} />
+                <Bar dataKey="Gastos" fill={ROJO} radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
-          </div>
+          </section>
+
+          {/* Fijos */}
+          <section className="pz-card pz-metrica-proy">
+            <Icono nombre="repetir" size={22} />
+            <div>
+              <b>Gasto fijo mensual: {p(d.fijoMensual)}</b>
+              <span>{d.cantSubs === 0 ? 'No tenés suscripciones activas.' : `Son ${d.cantSubs} suscripcion${d.cantSubs === 1 ? '' : 'es'} activa${d.cantSubs === 1 ? '' : 's'}${d.ingMes > 0 ? `, el ${((d.fijoMensual / d.ingMes) * 100).toFixed(0)}% de lo que entró` : ''}.`}</span>
+            </div>
+          </section>
         </>
       )}
-    </section>
+    </div>
   )
 }

@@ -299,3 +299,42 @@ body { margin: 0; background: var(--fondo); color: var(--tinta); font-family: va
 .pz-fijo:last-child { border-bottom: 0; }
 .pz-fijo.pausado { opacity: .55; }
 @media (prefers-reduced-motion: reduce) { .pz-switch-pista, .pz-switch-pista span { transition: none; } }
+
+/* ===== Parte 4: Primeros pasos y Métricas ===== */
+.pz-pasos { padding-bottom: 0; background: var(--fondo); }
+.pz-pasos-in { min-height: 100vh; padding: 20px 18px calc(110px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 18px; }
+.pz-pasos-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.pz-pasos-puntos { display: flex; gap: 6px; flex: 1; max-width: 220px; }
+.pz-pasos-puntos span { flex: 1; height: 6px; border-radius: 99px; background: #D5DBD2; transition: background .2s; }
+.pz-pasos-puntos span.on { background: var(--verde); }
+.pz-pasos-cuerpo { display: flex; flex-direction: column; gap: 16px; }
+.pz .pz-pasos-titulo { margin: 0; font: 800 30px/1.08 var(--display); letter-spacing: -.6px; color: var(--tinta); }
+.pz-pasos-sub { margin: 0; font-size: 14.5px; line-height: 1.5; color: var(--gris); }
+.pz-pasos-ico { width: 52px; height: 52px; border-radius: 16px; background: var(--verde); color: var(--lima); display: flex; align-items: center; justify-content: center; }
+.pz-pasos .pz-marca-logo { width: 52px; height: 52px; border-radius: 16px; background: var(--verde); color: var(--lima); }
+.pz .pz-input-grande { min-height: 60px; font: 800 28px var(--display); letter-spacing: -.5px; }
+.pz .pz-chip-dia { min-width: 46px; padding: 0 10px; }
+.pz .pz-input-dia { width: 80px; min-height: 40px; border-radius: 999px; text-align: center; font-size: 13px; padding: 0 10px; }
+.pz-pasos-item { gap: 12px; padding: 14px; }
+.pz-pasos-item-top { display: flex; align-items: center; gap: 10px; }
+.pz-pasos-item-top b { flex: 1; font-size: 15.5px; }
+.pz .pz-chip-logo.on .pz-avatar-logo { border-color: transparent; }
+.pz-pasos-botones { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; display: flex; gap: 10px; max-width: 480px; margin: 0 auto; padding: 14px 18px calc(16px + env(safe-area-inset-bottom, 0px)); background: linear-gradient(to top, var(--fondo) 75%, rgba(242,244,239,0)); }
+.pz-pasos-botones .pz-btn-claro { min-height: 54px; width: 56px; flex-shrink: 0; border-radius: 16px; }
+.pz-pasos-fin { align-items: center; text-align: center; padding-top: 40px; }
+.pz-pasos-check { width: 76px; height: 76px; border-radius: 26px; background: var(--lima); color: var(--verde-osc); display: flex; align-items: center; justify-content: center; font: 800 38px var(--display); }
+.pz-pasos-resumen { width: 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; text-align: left; }
+.pz-pasos-resumen div { background: #fff; border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 4px; }
+.pz-pasos-resumen span { font-size: 12px; color: var(--gris); }
+.pz-pasos-resumen b { font: 700 18px var(--display); }
+
+.pz-totales b.pz-sube, .pz-sube { color: var(--rojo); }
+.pz-baja { color: var(--positivo); }
+.pz-fila-txt em { font-style: normal; font-weight: 700; }
+.pz-cat-lista { display: flex; flex-direction: column; }
+.pz-metrica-proy { flex-direction: row; align-items: flex-start; gap: 12px; color: var(--verde); }
+.pz-metrica-proy div { display: flex; flex-direction: column; gap: 3px; color: var(--tinta); }
+.pz-metrica-proy b { font-size: 14.5px; }
+.pz-metrica-proy span { font-size: 13px; color: var(--gris); line-height: 1.4; }
+.pz-leyenda-fila { display: flex; gap: 18px; }
+@media (prefers-reduced-motion: reduce) { .pz-pasos-puntos span { transition: none; } }

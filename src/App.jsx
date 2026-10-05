@@ -14,6 +14,7 @@ import { generarRecurrentes } from './recurrentes'
 import NuevaClave from './NuevaClave'
 import InstalarApp from './InstalarApp'
 import Perfil from './Perfil'
+import PrimerosPasos from './PrimerosPasos'
 import { ToastProvider, useToast } from './Toast'
 import './App.css'
 import './theme.css'
@@ -45,6 +46,7 @@ function PesosApp() {
   const [recuperando, setRecuperando] = useState(false)
   const [perfil, setPerfil] = useState(false)
   const [verTutorial, setVerTutorial] = useState(0)
+  const [pasos, setPasos] = useState('revisando') // 'revisando' | 'mostrar' | 'listo'
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -74,9 +76,38 @@ function PesosApp() {
     })
   }, [uidSesion, avisar])
 
+  // Primeros pasos: solo para cuentas nuevas (sin datos cargados)
+  const yaHizoPasos = !!session?.user?.user_metadata?.primeros_pasos
+  useEffect(() => {
+    if (!uidSesion) return
+    // Si justo está en los primeros pasos, se deja terminar (para que vea el resumen final)
+    if (yaHizoPasos) { setPasos((actual) => (actual === 'mostrar' ? actual : 'listo')); return }
+    setPasos('revisando')
+    let cancelado = false
+    async function revisar() {
+      const contar = (tabla) => supabase.from(tabla).select('id', { count: 'exact', head: true }).eq('usuario_id', uidSesion)
+      const r = await Promise.all([contar('gastos'), contar('ingresos'), contar('tarjetas'), contar('suscripciones')])
+      if (cancelado) return
+      const tieneDatos = r.some((x) => (x.count || 0) > 0)
+      if (tieneDatos) {
+        // Cuenta vieja: se marca como hecha sin mostrar nada
+        setPasos('listo')
+        supabase.auth.updateUser({ data: { primeros_pasos: true } })
+      } else {
+        setPasos('mostrar')
+      }
+    }
+    revisar()
+    return () => { cancelado = true }
+  }, [uidSesion, yaHizoPasos])
+
   if (cargandoSesion) return <p className="cargando">Cargando...</p>
   if (recuperando) return <NuevaClave onListo={() => setRecuperando(false)} />
   if (!session) return <Auth />
+  if (pasos === 'revisando') return <p className="cargando">Cargando...</p>
+  if (pasos === 'mostrar') {
+    return <PrimerosPasos usuario={session.user} onListo={() => { setPasos('listo'); setTab('inicio'); refrescar() }} />
+  }
 
   const uid = session.user.id
   const nombrePila = (session.user.user_metadata?.nombre || '').trim().split(' ')[0]
@@ -102,14 +133,7 @@ function PesosApp() {
       )}
 
       {tab === 'resumen' && (
-        <div className="pz-screen">
-          <div className="pz-top">
-            <button type="button" className="pz-icon-btn" onClick={() => setTab('inicio')} aria-label="Volver">
-              <Icono nombre="izq" size={20} />
-            </button>
-          </div>
-          <div className="pz-legacy"><Dashboard key={refreshKey} /></div>
-        </div>
+        <Dashboard usuarioId={uid} refreshKey={refreshKey} oculto={oculto} onVolver={() => setTab('inicio')} />
       )}
 
       <nav className="pz-nav" aria-label="Navegación principal">
