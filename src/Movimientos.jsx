@@ -44,7 +44,7 @@ export default function Movimientos({ usuarioId, refreshKey, oculto, onCambio })
 
   const lista = [
     ...(vista === 'ingresos' ? [] : gastos.map((g) => ({
-      tipo: 'gasto', id: g.id, key: 'g' + g.id, fecha: g.fecha, raw: g,
+      tipo: 'gasto', id: g.id, key: 'g' + g.id, fecha: g.fecha, raw: g, categoria: g.categorias?.nombre,
       nombre: g.descripcion || g.categorias?.nombre || 'Gasto',
       detalle: [
         g.categorias?.nombre,
@@ -55,7 +55,7 @@ export default function Movimientos({ usuarioId, refreshKey, oculto, onCambio })
       monto: -Number(g.monto), moneda: g.moneda, medio: g.tarjeta_id ? 't:' + g.tarjeta_id : g.medio_pago,
     }))),
     ...(vista === 'gastos' ? [] : ingresos.map((i) => ({
-      tipo: 'ingreso', id: i.id, key: 'i' + i.id, fecha: i.fecha, raw: i,
+      tipo: 'ingreso', id: i.id, key: 'i' + i.id, fecha: i.fecha, raw: i, categoria: i.concepto,
       nombre: i.descripcion || i.concepto, detalle: `Ingreso · ${i.concepto}`, monto: Number(i.monto), medio: 'ingreso',
     }))),
   ]
@@ -74,6 +74,41 @@ export default function Movimientos({ usuarioId, refreshKey, oculto, onCambio })
   const totalGastos = lista.filter((m) => m.monto < 0).reduce((a, m) => a - m.monto, 0)
   const totalIngresos = lista.filter((m) => m.monto > 0).reduce((a, m) => a + m.monto, 0)
   const hoy = hoyISO()
+
+  // Descarga lo que se ve en pantalla como archivo que abre Excel
+  function exportar() {
+    const sep = ';'
+    const celda = (v) => {
+      const t = String(v ?? '')
+      return /[;"\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t
+    }
+    const numero = (n) => Number(n).toFixed(2).replace('.', ',')
+    const filas = [['Fecha', 'Tipo', 'Detalle', 'Categoría', 'Medio de pago', 'Cuota', 'Moneda original', 'Monto original', 'Monto en pesos']]
+    lista.forEach((m) => {
+      const g = m.raw
+      filas.push([
+        m.fecha.split('-').reverse().join('/'),
+        m.tipo === 'gasto' ? 'Gasto' : 'Ingreso',
+        m.nombre,
+        m.tipo === 'gasto' ? g.categorias?.nombre || '' : g.concepto,
+        m.tipo === 'gasto' ? g.tarjetas?.alias || MEDIOS[g.medio_pago] || '' : '',
+        m.tipo === 'gasto' && g.cuotas_total > 1 ? `${g.cuota_num}/${g.cuotas_total}` : '',
+        m.tipo === 'gasto' ? g.moneda || 'ARS' : 'ARS',
+        m.tipo === 'gasto' && g.monto_original ? numero(g.monto_original) : '',
+        numero(m.monto),
+      ])
+    })
+    const csv = '\uFEFF' + filas.map((f) => f.map(celda).join(sep)).join('\r\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `PESOS_movimientos_${MESES_LARGO[sel.mes]}_${sel.anio}.csv`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  }
 
   async function eliminar(m) {
     let ok
@@ -131,6 +166,10 @@ export default function Movimientos({ usuarioId, refreshKey, oculto, onCambio })
         </div>
       )}
 
+      <button type="button" className="pz-btn pz-btn-claro" onClick={exportar} disabled={lista.length === 0}>
+        <Icono nombre="descargar" size={16} /> Descargar en Excel
+      </button>
+
       <div className="pz-totales">
         {vista !== 'gastos' && <div><span>Entró</span><b className="pos">+ {plata(totalIngresos, oculto)}</b></div>}
         {vista !== 'ingresos' && <div><span>Salió</span><b>- {plata(totalGastos, oculto)}</b></div>}
@@ -147,7 +186,7 @@ export default function Movimientos({ usuarioId, refreshKey, oculto, onCambio })
             {gr.items.map((m) => (
               <div key={m.key}>
                 <button type="button" className="pz-fila pz-fila-btn" onClick={() => setAbierto(abierto === m.key ? null : m.key)} aria-expanded={abierto === m.key}>
-                  <Avatar nombre={m.nombre} />
+                  <Avatar nombre={m.nombre} categoria={m.categoria} />
                   <span className="pz-fila-txt">
                     <b>{m.nombre}{m.moneda && m.moneda !== 'ARS' && <span className="pz-tag">{m.moneda}</span>}</b>
                     <span>{m.detalle}</span>

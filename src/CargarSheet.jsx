@@ -19,7 +19,7 @@ export default function CargarSheet({ usuarioId, tipoInicial = 'gasto', onCerrar
   const [concepto, setConcepto] = useState(CONCEPTOS_INGRESO[0])
   const [fecha, setFecha] = useState(hoyISO())
   const [tarjetas, setTarjetas] = useState([])
-  const [catsPropias, setCatsPropias] = useState([])
+  const [recientes, setRecientes] = useState([])
   const [cot, setCot] = useState(null)
   const [cotManual, setCotManual] = useState('')
   const [guardando, setGuardando] = useState(false)
@@ -27,14 +27,21 @@ export default function CargarSheet({ usuarioId, tipoInicial = 'gasto', onCerrar
 
   useEffect(() => {
     async function cargar() {
-      const [t, c] = await Promise.all([
+      const [t, r] = await Promise.all([
         supabase.from('tarjetas').select('id, alias, ultimos4').eq('usuario_id', usuarioId).order('alias'),
-        supabase.from('categorias').select('nombre').eq('usuario_id', usuarioId).order('nombre'),
+        supabase.from('gastos').select('descripcion, monto, moneda, monto_original, medio_pago, tarjeta_id, cuotas_total, categorias(nombre)')
+          .eq('usuario_id', usuarioId).not('descripcion', 'is', null).order('fecha', { ascending: false }).limit(60),
       ])
       setTarjetas(t.data || [])
-      const extra = (c.data || []).map((x) => x.nombre)
-        .filter((n) => !CATEGORIAS.some((k) => k.toLowerCase() === n.toLowerCase()))
-      setCatsPropias(extra)
+      // Comercios usados hace poco, sin repetir
+      const vistos = new Set()
+      const lista = []
+      for (const g of r.data || []) {
+        const k = g.descripcion.trim().toLowerCase()
+        if (!vistos.has(k)) { vistos.add(k); lista.push(g) }
+        if (lista.length === 8) break
+      }
+      setRecientes(lista)
     }
     cargar()
     traerCotizaciones().then(setCot)
@@ -117,7 +124,15 @@ export default function CargarSheet({ usuarioId, tipoInicial = 'gasto', onCerrar
     }
   }
 
-  const listaCats = [...CATEGORIAS, ...catsPropias]
+  function usarReciente(g) {
+    setDescripcion(g.descripcion)
+    setCategoria(g.categorias?.nombre && CATEGORIAS.includes(g.categorias.nombre) ? g.categorias.nombre : '')
+    setMedio(g.tarjeta_id ? 't:' + g.tarjeta_id : g.medio_pago || 'efectivo')
+    if (!monto) {
+      if (g.moneda && g.moneda !== 'ARS' && g.monto_original) { setMoneda(g.moneda); setMonto(String(g.monto_original)) }
+      else if (!g.cuotas_total || g.cuotas_total === 1) setMonto(String(g.monto))
+    }
+  }
 
   return (
     <div className="pz-sheet-fondo" onClick={onCerrar}>
@@ -160,6 +175,19 @@ export default function CargarSheet({ usuarioId, tipoInicial = 'gasto', onCerrar
           )}
         </div>
 
+        {tipo === 'gasto' && recientes.length > 0 && (
+          <div className="pz-campo">
+            <span className="pz-label">Recientes</span>
+            <div className="pz-chips pz-chips-scroll">
+              {recientes.map((g) => (
+                <button key={g.descripcion} type="button" className="pz-chip pz-chip-logo" onClick={() => usarReciente(g)}>
+                  <Avatar nombre={g.descripcion} categoria={g.categorias?.nombre} size={24} />{g.descripcion}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="pz-campo">
           <label className="pz-label" htmlFor="desc">{tipo === 'gasto' ? '¿En qué?' : '¿De dónde?'}</label>
           <Autocompletar
@@ -177,7 +205,7 @@ export default function CargarSheet({ usuarioId, tipoInicial = 'gasto', onCerrar
             <div className="pz-campo">
               <span className="pz-label">Categoría</span>
               <div className="pz-chips">
-                {listaCats.map((c) => (
+                {CATEGORIAS.map((c) => (
                   <button key={c} type="button" className={`pz-chip ${categoria === c ? 'on' : ''}`}
                     onClick={() => setCategoria(categoria === c ? '' : c)}>{c}</button>
                 ))}

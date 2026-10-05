@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from './supabaseClient'
 import Avatar from './Avatar'
 import Icono from './Iconos'
+import Presupuestos from './Presupuestos'
 import { plata, hoyISO, claveMes, diasHasta, DIAS, MESES_LARGO, COLORES_CAT, traerCotizaciones } from './utils'
 
 export default function Inicio({ usuarioId, email, refreshKey, oculto, setOculto, onSalir, irA }) {
@@ -80,11 +81,12 @@ export default function Inicio({ usuarioId, email, refreshKey, oculto, setOculto
   const ultimos = [
     ...gastos.filter((g) => g.fecha <= hoy).map((g) => ({
       id: 'g' + g.id, fecha: g.fecha, nombre: g.descripcion || g.categorias?.nombre || 'Gasto',
+      categoria: g.categorias?.nombre,
       detalle: [g.categorias?.nombre, g.tarjetas?.alias || (g.medio_pago === 'mercado_pago' ? 'Mercado Pago' : g.medio_pago === 'efectivo' ? 'Efectivo' : null)].filter(Boolean).join(' · '),
       monto: -Number(g.monto), moneda: g.moneda, original: g.monto_original,
     })),
     ...ingresos.map((i) => ({
-      id: 'i' + i.id, fecha: i.fecha, nombre: i.descripcion || i.concepto, detalle: `Ingreso · ${i.concepto}`, monto: Number(i.monto),
+      id: 'i' + i.id, fecha: i.fecha, nombre: i.descripcion || i.concepto, categoria: i.concepto, detalle: `Ingreso · ${i.concepto}`, monto: Number(i.monto),
     })),
   ].sort((a, b) => (a.fecha < b.fecha ? 1 : -1)).slice(0, 5)
 
@@ -180,6 +182,8 @@ export default function Inicio({ usuarioId, email, refreshKey, oculto, setOculto
         )}
       </section>
 
+      <Presupuestos usuarioId={usuarioId} porCategoria={porCat} oculto={oculto} refreshKey={refreshKey} />
+
       <section className="pz-card pz-card-lista">
         <div className="pz-card-head">
           <h2 className="pz-h2">Últimos movimientos</h2>
@@ -188,7 +192,7 @@ export default function Inicio({ usuarioId, email, refreshKey, oculto, setOculto
         {!cargando && ultimos.length === 0 && <p className="pz-vacio">Sin movimientos todavía.</p>}
         {ultimos.map((m) => (
           <div className="pz-fila" key={m.id}>
-            <Avatar nombre={m.nombre} />
+            <Avatar nombre={m.nombre} categoria={m.categoria} />
             <div className="pz-fila-txt">
               <b>{m.nombre}{m.moneda && m.moneda !== 'ARS' && <span className="pz-tag">{m.moneda}</span>}</b>
               <span>{m.detalle}</span>

@@ -9,6 +9,7 @@ import Tutorial from './Tutorial'
 import Inicio from './Inicio'
 import CargarSheet from './CargarSheet'
 import Icono from './Iconos'
+import { ordenarDatos } from './ordenarDatos'
 import './App.css'
 import './theme.css'
 
@@ -40,6 +41,13 @@ function App() {
   }, [])
 
   const refrescar = () => setRefreshKey((k) => k + 1)
+
+  // Una sola vez: acomoda los comercios que estaban cargados como categoría
+  const uidSesion = session?.user?.id
+  useEffect(() => {
+    if (!uidSesion) return
+    ordenarDatos(uidSesion).then((cambio) => { if (cambio) setRefreshKey((k) => k + 1) })
+  }, [uidSesion])
 
   if (cargandoSesion) return <p className="cargando">Cargando...</p>
   if (!session) return <Auth />

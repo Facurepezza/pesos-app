@@ -236,3 +236,20 @@ body { margin: 0; background: var(--fondo); color: var(--tinta); font-family: va
 .pz-tarjeta-nombre .pz-avatar { border-radius: 9px; border: 0; }
 .pz-tarjeta-pie { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .pz-tarjeta-num { font-family: var(--display); font-size: 13px; letter-spacing: .12em; opacity: .95; }
+
+/* ===== Presupuestos y recientes ===== */
+.pz-pres { display: flex; flex-direction: column; gap: 6px; padding: 10px 0; border-top: 1px solid var(--linea); }
+.pz-pres:first-of-type { border-top: 0; }
+.pz-pres-top { display: flex; align-items: center; gap: 10px; }
+.pz-pres-top b { flex: 1; font-size: 14.5px; }
+.pz-pres-num { font-family: var(--display); font-weight: 700; font-size: 14px; white-space: nowrap; }
+.pz-pres-num small { font-family: var(--texto); font-weight: 600; color: var(--gris); font-size: 11.5px; }
+.pz-pres-barra { height: 8px; border-radius: 99px; background: #E4E9E1; overflow: hidden; }
+.pz-pres-barra div { height: 100%; border-radius: 99px; background: var(--verde); }
+.pz-pres-barra div.cerca { background: #D99A1E; }
+.pz-pres-barra div.pasado { background: var(--rojo); }
+.pz-pres-txt { font-size: 12px; color: var(--gris); font-weight: 600; }
+.pz-pres-txt.cerca { color: #7A5300; }
+.pz-pres-txt.pasado, .pz-pres-num.pasado { color: var(--rojo); }
+.pz-tope { display: grid; grid-template-columns: auto 1fr 130px; align-items: center; gap: 10px; font-weight: 600; font-size: 14px; }
+.pz .pz-tope .pz-input { min-height: 42px; text-align: right; }
