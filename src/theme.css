@@ -177,3 +177,48 @@ body { margin: 0; background: var(--fondo); color: var(--tinta); font-family: va
 .pz .dash-fila.principal strong { font-family: var(--display); }
 .pz .dash-bloque { border: 0; box-shadow: none; border-radius: 18px; background: #F7F9F5; }
 .pz .dash-nav button { box-shadow: none; border-radius: 12px; border: 1px solid var(--linea); color: var(--tinta); }
+
+/* ===== Parte 3: Tarjetas, Bienvenida y modo ejemplo ===== */
+.pz-tarjetas { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; margin: 0 -18px; padding: 0 18px 4px; }
+.pz-tarjetas::-webkit-scrollbar { display: none; }
+.pz .pz-tarjeta { flex-shrink: 0; scroll-snap-align: start; width: 290px; height: 172px; margin: 0; border: 0; border-radius: 22px; padding: 18px; display: flex; flex-direction: column; justify-content: space-between; text-align: left; cursor: pointer; box-shadow: 0 10px 22px rgba(14,26,20,.18); font-family: var(--texto); }
+.pz-tarjeta-top { display: flex; justify-content: space-between; align-items: center; }
+.pz-tarjeta-top b { font-family: var(--display); font-size: 18px; }
+.pz-tarjeta-top small { font-size: 11px; font-weight: 800; letter-spacing: .08em; opacity: .9; }
+.pz-tarjeta-mid { display: flex; flex-direction: column; gap: 2px; }
+.pz-tarjeta-mid small { font-size: 12px; opacity: .85; }
+.pz-tarjeta-mid strong { font-family: var(--display); font-size: 28px; font-weight: 800; }
+.pz-tarjeta-pie { font-size: 12px; opacity: .9; }
+.pz-barras { display: flex; align-items: flex-end; gap: 8px; height: 130px; }
+.pz-barra-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 6px; height: 100%; }
+.pz-barra-col div { width: 100%; border-radius: 8px; }
+.pz-barra-col span { font-size: 10.5px; font-weight: 700; color: var(--gris); }
+.pz-barra-col small { font-size: 11.5px; color: var(--gris); }
+.pz-cuota { display: flex; flex-direction: column; gap: 8px; padding: 12px 0; border-top: 1px solid var(--linea); }
+.pz-progreso { height: 6px; border-radius: 99px; background: #E4E9E1; overflow: hidden; }
+.pz-progreso div { height: 100%; background: var(--verde); }
+.pz-dos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.pz-colores { display: flex; gap: 10px; flex-wrap: wrap; }
+.pz .pz-color { width: 44px; height: 44px; margin: 0; padding: 0; border-radius: 14px; border: 3px solid transparent; cursor: pointer; box-shadow: none; }
+.pz .pz-color.on { border-color: var(--lima); outline: 2px solid var(--tinta); }
+
+.pz-demo { position: sticky; top: 0; z-index: 40; display: flex; align-items: center; justify-content: center; gap: 10px; background: var(--lima); color: var(--tinta); font-size: 13px; font-weight: 700; padding: 8px 12px; }
+
+.pz-bienv { max-width: none; min-height: 100vh; padding: 0; background: var(--verde-osc); color: #fff; }
+.pz-bienv-in { max-width: 440px; margin: 0 auto; min-height: 100vh; padding: 40px 24px 28px; display: flex; flex-direction: column; gap: 28px; }
+.pz-marca { display: flex; align-items: center; gap: 10px; }
+.pz-marca-logo { width: 44px; height: 44px; border-radius: 14px; background: var(--lima); color: var(--verde-osc); display: flex; align-items: center; justify-content: center; font: 800 26px var(--display); }
+.pz-marca-nombre { font: 800 24px var(--display); letter-spacing: .5px; }
+.pz-bienv-hero h1 { margin: 0 0 12px; font: 800 44px/1.02 var(--display); letter-spacing: -1px; color: #fff; }
+.pz-bienv-hero p { margin: 0; font-size: 15.5px; line-height: 1.5; color: #CFE3D8; }
+.pz-ventajas { display: flex; flex-direction: column; gap: 18px; }
+.pz-ventaja { display: flex; gap: 14px; align-items: flex-start; }
+.pz-ventaja-ico { width: 44px; height: 44px; border-radius: 14px; background: rgba(200,241,105,.14); color: var(--lima); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.pz-ventaja div { display: flex; flex-direction: column; gap: 3px; }
+.pz-ventaja b { font-size: 15.5px; }
+.pz-ventaja span { font-size: 13px; color: #CFE3D8; line-height: 1.45; }
+.pz-bienv-botones { margin-top: auto; display: flex; flex-direction: column; gap: 10px; }
+.pz .pz-btn-lima { background: var(--lima); color: var(--verde-osc); }
+.pz .pz-btn-borde { background: transparent; color: #fff; border: 1.5px solid rgba(255,255,255,.35); }
+.pz .pz-link-lima { color: var(--lima); font-size: 14px; padding: 10px; text-decoration: underline; text-align: center; }
+.pz-bienv-form { background: #fff; color: var(--tinta); border-radius: 24px; padding: 20px; display: flex; flex-direction: column; gap: 14px; }

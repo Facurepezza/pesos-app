@@ -3,6 +3,7 @@ import { supabase } from './supabaseClient'
 import Auth from './Auth'
 import Movimientos from './Movimientos'
 import Suscripciones from './Suscripciones'
+import Tarjetas from './Tarjetas'
 import Dashboard from './Dashboard'
 import Tutorial from './Tutorial'
 import Inicio from './Inicio'
@@ -61,10 +62,7 @@ function App() {
       )}
 
       {tab === 'tarjetas' && (
-        <div className="pz-screen">
-          <h1 className="pz-h1">Tarjetas</h1>
-          <div className="pz-card"><p className="pz-vacio">Esta pantalla la armamos en la parte 3.</p></div>
-        </div>
+        <Tarjetas usuarioId={uid} refreshKey={refreshKey} oculto={oculto} onCambio={refrescar} />
       )}
 
       {tab === 'resumen' && (
