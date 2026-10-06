@@ -42,7 +42,7 @@ async function generar(usuarioId) {
       if (fecha > hoy) break
       const comun = { usuario_id: usuarioId, monto: f.monto, fecha, descripcion: f.descripcion, recurrente_id: f.id }
       const { error: e } = f.tipo === 'ingreso'
-        ? await supabase.from('ingresos').insert({ ...comun, concepto: f.concepto || 'Otro' })
+        ? await supabase.from('ingresos').insert({ ...comun, concepto: f.concepto || 'Otro', medio_cobro: f.medio_cobro || null })
         : await supabase.from('gastos').insert({
           ...comun, categoria_id: f.categoria_id, tarjeta_id: f.tarjeta_id, medio_pago: f.medio_pago || 'efectivo',
         })

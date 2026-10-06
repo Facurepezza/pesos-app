@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { supabase } from './supabaseClient'
 import Avatar from './Avatar'
 import Icono from './Iconos'
-import { CONCEPTOS_INGRESO, hoyISO, plata } from './utils'
+import { CONCEPTOS_INGRESO, MEDIOS_COBRO, hoyISO, plata } from './utils'
 
 // Primeros pasos guiados la primera vez que alguien entra a PESOS:
 // nombre, cuánto cobra y qué día, tarjetas y suscripciones.
@@ -59,7 +59,7 @@ function proximaFecha(dia) {
 export default function PrimerosPasos({ usuario, onListo }) {
   const [paso, setPaso] = useState(0)
   const [nombre, setNombre] = useState(usuario.user_metadata?.nombre || '')
-  const [ingreso, setIngreso] = useState({ monto: '', concepto: 'Sueldo', dia: '' })
+  const [ingreso, setIngreso] = useState({ monto: '', concepto: 'Sueldo', dia: '', medio: 'banco' })
   const [tarjetas, setTarjetas] = useState([])
   const [subs, setSubs] = useState([])
   const [otroBanco, setOtroBanco] = useState('')
@@ -140,12 +140,12 @@ export default function PrimerosPasos({ usuario, onListo }) {
         const mesAnterior = `${ant.getFullYear()}-${pad(ant.getMonth() + 1)}`
         const { data: r, error: e1 } = await supabase.from('recurrentes').insert({
           usuario_id: uid, tipo: 'ingreso', descripcion: ingreso.concepto, monto: montoIng, dia: diaIng,
-          concepto: ingreso.concepto, activo: true, ultimo_mes: yaCobro ? mesActual : mesAnterior,
+          concepto: ingreso.concepto, medio_cobro: ingreso.medio, activo: true, ultimo_mes: yaCobro ? mesActual : mesAnterior,
         }).select('id').single()
         if (e1) throw e1
         if (yaCobro) {
           const { error: e2 } = await supabase.from('ingresos').insert({
-            usuario_id: uid, monto: montoIng, fecha: fechaEsteMes, concepto: ingreso.concepto,
+            usuario_id: uid, monto: montoIng, fecha: fechaEsteMes, concepto: ingreso.concepto, medio_cobro: ingreso.medio,
             descripcion: ingreso.concepto, recurrente_id: r.id,
           })
           if (e2) throw e2
@@ -252,6 +252,16 @@ export default function PrimerosPasos({ usuario, onListo }) {
               <label className="pz-label" htmlFor="pp-monto">Monto en pesos</label>
               <input id="pp-monto" className="pz-input pz-input-grande" inputMode="decimal" value={ingreso.monto}
                 onChange={(e) => setIngreso({ ...ingreso, monto: e.target.value })} placeholder="$ 0" />
+            </div>
+
+            <div className="pz-campo">
+              <span className="pz-label">¿Cómo te lo pagan?</span>
+              <div className="pz-chips">
+                {Object.entries(MEDIOS_COBRO).map(([k, l]) => (
+                  <button key={k} type="button" className={`pz-chip ${ingreso.medio === k ? 'on' : ''}`}
+                    onClick={() => setIngreso({ ...ingreso, medio: k })}>{l}</button>
+                ))}
+              </div>
             </div>
 
             <div className="pz-campo">

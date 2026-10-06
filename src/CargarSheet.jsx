@@ -3,7 +3,7 @@ import { supabase } from './supabaseClient'
 import Autocompletar from './Autocompletar'
 import Avatar from './Avatar'
 import Icono from './Iconos'
-import { plata, hoyISO, sumarMeses, claveMes, CATEGORIAS, CONCEPTOS_INGRESO, traerCotizaciones } from './utils'
+import { plata, hoyISO, sumarMeses, claveMes, CATEGORIAS, CONCEPTOS_INGRESO, MEDIOS_COBRO, traerCotizaciones } from './utils'
 
 const CUOTAS = [1, 3, 6, 12]
 
@@ -17,6 +17,7 @@ export default function CargarSheet({ usuarioId, tipoInicial = 'gasto', onCerrar
   const [nuevaTarjeta, setNuevaTarjeta] = useState('')
   const [cuotas, setCuotas] = useState(1)
   const [concepto, setConcepto] = useState(CONCEPTOS_INGRESO[0])
+  const [medioCobro, setMedioCobro] = useState('banco')
   const [fecha, setFecha] = useState(hoyISO())
   const [tarjetas, setTarjetas] = useState([])
   const [recientes, setRecientes] = useState([])
@@ -106,13 +107,13 @@ export default function CargarSheet({ usuarioId, tipoInicial = 'gasto', onCerrar
         if (repite) {
           const { data: r, error: er } = await supabase.from('recurrentes').insert({
             usuario_id: usuarioId, tipo: 'ingreso', descripcion: descripcion.trim() || concepto, monto: montoPesos,
-            dia: Number(fecha.slice(8, 10)), ultimo_mes: fecha.slice(0, 7), concepto,
+            dia: Number(fecha.slice(8, 10)), ultimo_mes: fecha.slice(0, 7), concepto, medio_cobro: medioCobro,
           }).select('id').single()
           if (er) throw er
           recurrenteId = r.id
         }
         const { error: err } = await supabase.from('ingresos').insert({
-          usuario_id: usuarioId, monto: montoPesos, fecha, concepto,
+          usuario_id: usuarioId, monto: montoPesos, fecha, concepto, medio_cobro: medioCobro,
           descripcion: descripcion.trim() || null, recurrente_id: recurrenteId,
         })
         if (err) throw err
@@ -294,14 +295,24 @@ export default function CargarSheet({ usuarioId, tipoInicial = 'gasto', onCerrar
             )}
           </>
         ) : (
-          <div className="pz-campo">
-            <span className="pz-label">Concepto</span>
-            <div className="pz-chips">
-              {CONCEPTOS_INGRESO.map((c) => (
-                <button key={c} type="button" className={`pz-chip ${concepto === c ? 'on' : ''}`} onClick={() => setConcepto(c)}>{c}</button>
-              ))}
+          <>
+            <div className="pz-campo">
+              <span className="pz-label">Concepto</span>
+              <div className="pz-chips">
+                {CONCEPTOS_INGRESO.map((c) => (
+                  <button key={c} type="button" className={`pz-chip ${concepto === c ? 'on' : ''}`} onClick={() => setConcepto(c)}>{c}</button>
+                ))}
+              </div>
             </div>
-          </div>
+            <div className="pz-campo">
+              <span className="pz-label">Cómo te pagaron</span>
+              <div className="pz-chips">
+                {Object.entries(MEDIOS_COBRO).map(([k, l]) => (
+                  <button key={k} type="button" className={`pz-chip ${medioCobro === k ? 'on' : ''}`} onClick={() => setMedioCobro(k)}>{l}</button>
+                ))}
+              </div>
+            </div>
+          </>
         )}
 
         <div className="pz-campo">

@@ -59,6 +59,9 @@ export const CONCEPTOS_INGRESO = ['Sueldo', 'Freelance / changas', 'Ventas', 'Re
 
 export const MEDIOS = { efectivo: 'Efectivo', mercado_pago: 'Mercado Pago', tarjeta: 'Tarjeta' }
 
+// Cómo te pagaron un ingreso
+export const MEDIOS_COBRO = { banco: 'Cuenta bancaria', mercado_pago: 'Mercado Pago', efectivo: 'Efectivo', otro: 'Otro' }
+
 // ---------- Cotizaciones (DolarAPI, gratis y sin clave) ----------
 let cache = null
 

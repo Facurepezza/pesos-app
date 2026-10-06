@@ -4,7 +4,7 @@ import Avatar from './Avatar'
 import Icono from './Iconos'
 import { useToast } from './Toast'
 import Fijos from './Fijos'
-import { plata, claveMes, mesDesplazado, fechaLinda, hoyISO, MESES_LARGO, CATEGORIAS, CONCEPTOS_INGRESO, MEDIOS } from './utils'
+import { plata, claveMes, mesDesplazado, fechaLinda, hoyISO, MESES_LARGO, CATEGORIAS, CONCEPTOS_INGRESO, MEDIOS, MEDIOS_COBRO } from './utils'
 
 export default function Movimientos({ usuarioId, refreshKey, oculto, onCambio }) {
   const ahora = new Date()
@@ -35,7 +35,7 @@ export default function Movimientos({ usuarioId, refreshKey, oculto, onCambio })
           .select('id, monto, fecha, descripcion, medio_pago, moneda, monto_original, categoria_id, tarjeta_id, compra_id, cuota_num, cuotas_total, recurrente_id, categorias(nombre), tarjetas(alias)')
           .eq('usuario_id', usuarioId).gte('fecha', desde).lt('fecha', hasta).order('fecha', { ascending: false }),
         supabase.from('ingresos')
-          .select('id, monto, fecha, concepto, descripcion, recurrente_id')
+          .select('id, monto, fecha, concepto, descripcion, recurrente_id, medio_cobro')
           .eq('usuario_id', usuarioId).gte('fecha', desde).lt('fecha', hasta).order('fecha', { ascending: false }),
       ])
       setGastos(g.data || [])
@@ -60,7 +60,7 @@ export default function Movimientos({ usuarioId, refreshKey, oculto, onCambio })
     }))),
     ...(vista === 'gastos' ? [] : ingresos.map((i) => ({
       tipo: 'ingreso', id: i.id, key: 'i' + i.id, fecha: i.fecha, raw: i, categoria: i.concepto,
-      nombre: i.descripcion || i.concepto, detalle: `Ingreso · ${i.concepto}${i.recurrente_id ? ' · fijo' : ''}`, monto: Number(i.monto), medio: 'ingreso',
+      nombre: i.descripcion || i.concepto, detalle: ['Ingreso', i.concepto, MEDIOS_COBRO[i.medio_cobro], i.recurrente_id ? 'fijo' : null].filter(Boolean).join(' · '), monto: Number(i.monto), medio: 'ingreso',
     }))),
   ]
     .filter((m) => !filtroMedio || (filtroMedio === 'tarjeta' ? m.medio.startsWith('t:') || m.medio === 'tarjeta' : m.medio === filtroMedio))
@@ -87,7 +87,7 @@ export default function Movimientos({ usuarioId, refreshKey, oculto, onCambio })
       return /[;"\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t
     }
     const numero = (n) => Number(n).toFixed(2).replace('.', ',')
-    const filas = [['Fecha', 'Tipo', 'Detalle', 'Categoría', 'Medio de pago', 'Cuota', 'Moneda original', 'Monto original', 'Monto en pesos']]
+    const filas = [['Fecha', 'Tipo', 'Detalle', 'Categoría', 'Medio de pago o cobro', 'Cuota', 'Moneda original', 'Monto original', 'Monto en pesos']]
     lista.forEach((m) => {
       const g = m.raw
       filas.push([
@@ -95,7 +95,7 @@ export default function Movimientos({ usuarioId, refreshKey, oculto, onCambio })
         m.tipo === 'gasto' ? 'Gasto' : 'Ingreso',
         m.nombre,
         m.tipo === 'gasto' ? g.categorias?.nombre || '' : g.concepto,
-        m.tipo === 'gasto' ? g.tarjetas?.alias || MEDIOS[g.medio_pago] || '' : '',
+        m.tipo === 'gasto' ? g.tarjetas?.alias || MEDIOS[g.medio_pago] || '' : MEDIOS_COBRO[g.medio_cobro] || '',
         m.tipo === 'gasto' && g.cuotas_total > 1 ? `${g.cuota_num}/${g.cuotas_total}` : '',
         m.tipo === 'gasto' ? g.moneda || 'ARS' : 'ARS',
         m.tipo === 'gasto' && g.monto_original ? numero(g.monto_original) : '',
@@ -240,6 +240,7 @@ function EditarMovimiento({ usuarioId, mov, onCerrar, onGuardado }) {
   const [fecha, setFecha] = useState(r.fecha)
   const [categoria, setCategoria] = useState(esGasto ? r.categorias?.nombre || '' : '')
   const [concepto, setConcepto] = useState(esGasto ? '' : r.concepto)
+  const [medioCobro, setMedioCobro] = useState(esGasto ? '' : r.medio_cobro || '')
   const [error, setError] = useState(null)
   const [guardando, setGuardando] = useState(false)
 
@@ -263,7 +264,7 @@ function EditarMovimiento({ usuarioId, mov, onCerrar, onGuardado }) {
         }
         cambios = { monto: valor, fecha, descripcion: descripcion.trim() || null, categoria_id: categoriaId }
       } else {
-        cambios = { monto: valor, fecha, descripcion: descripcion.trim() || null, concepto }
+        cambios = { monto: valor, fecha, descripcion: descripcion.trim() || null, concepto, medio_cobro: medioCobro || null }
       }
       const { data, error: e } = await supabase.from(esGasto ? 'gastos' : 'ingresos').update(cambios).eq('id', mov.id).select('id')
       if (e) throw e
@@ -306,6 +307,16 @@ function EditarMovimiento({ usuarioId, mov, onCerrar, onGuardado }) {
             ))}
           </div>
         </div>
+        {!esGasto && (
+          <div className="pz-campo">
+            <span className="pz-label">Cómo te pagaron</span>
+            <div className="pz-chips">
+              {Object.entries(MEDIOS_COBRO).map(([k, l]) => (
+                <button key={k} type="button" className={`pz-chip ${medioCobro === k ? 'on' : ''}`} onClick={() => setMedioCobro(k)}>{l}</button>
+              ))}
+            </div>
+          </div>
+        )}
         <div className="pz-campo">
           <label className="pz-label" htmlFor="ed-fecha">Fecha</label>
           <input id="ed-fecha" className="pz-input" type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />
