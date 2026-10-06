@@ -338,3 +338,11 @@ body { margin: 0; background: var(--fondo); color: var(--tinta); font-family: va
 .pz-metrica-proy span { font-size: 13px; color: var(--gris); line-height: 1.4; }
 .pz-leyenda-fila { display: flex; gap: 18px; }
 @media (prefers-reduced-motion: reduce) { .pz-pasos-puntos span { transition: none; } }
+/* ===== Arreglos: confirmación propia y campo de monto ===== */
+.pz.pz-capa { min-height: 0; padding: 0; margin: 0; max-width: none; }
+.pz-confirmar-fondo { z-index: 90; }
+.pz-confirmar { gap: 12px; padding-bottom: calc(22px + env(safe-area-inset-bottom, 0px)); }
+.pz-confirmar-txt { margin: 0; font-size: 14.5px; line-height: 1.5; color: var(--gris); }
+.pz-confirmar-botones { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 6px; }
+.pz .pz-btn-peligro-lleno { background: var(--rojo); color: #fff; border: 0; }
+.pz .pz-monto-fila input { min-width: 2ch; max-width: 290px; }

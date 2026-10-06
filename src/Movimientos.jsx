@@ -4,7 +4,7 @@ import Avatar from './Avatar'
 import Icono from './Iconos'
 import { useToast } from './Toast'
 import Fijos from './Fijos'
-import { plata, claveMes, mesDesplazado, fechaLinda, hoyISO, MESES_LARGO, CATEGORIAS, CONCEPTOS_INGRESO, MEDIOS, MEDIOS_COBRO } from './utils'
+import { plata, claveMes, mesDesplazado, fechaLinda, hoyISO, MESES_LARGO, CATEGORIAS, CONCEPTOS_INGRESO, MEDIOS, MEDIOS_COBRO, escribirMonto, aNumero, montoATexto } from './utils'
 
 export default function Movimientos({ usuarioId, refreshKey, oculto, onCambio }) {
   const ahora = new Date()
@@ -235,7 +235,7 @@ export default function Movimientos({ usuarioId, refreshKey, oculto, onCambio })
 function EditarMovimiento({ usuarioId, mov, onCerrar, onGuardado }) {
   const esGasto = mov.tipo === 'gasto'
   const r = mov.raw
-  const [monto, setMonto] = useState(String(r.monto))
+  const [monto, setMonto] = useState(montoATexto(r.monto))
   const [descripcion, setDescripcion] = useState(r.descripcion || '')
   const [fecha, setFecha] = useState(r.fecha)
   const [categoria, setCategoria] = useState(esGasto ? r.categorias?.nombre || '' : '')
@@ -245,7 +245,7 @@ function EditarMovimiento({ usuarioId, mov, onCerrar, onGuardado }) {
   const [guardando, setGuardando] = useState(false)
 
   async function guardar() {
-    const valor = parseFloat(monto)
+    const valor = aNumero(monto)
     if (!valor || valor <= 0) return setError('El monto tiene que ser mayor a 0.')
     setGuardando(true)
     setError(null)
@@ -289,7 +289,7 @@ function EditarMovimiento({ usuarioId, mov, onCerrar, onGuardado }) {
         )}
         <div className="pz-campo">
           <label className="pz-label" htmlFor="ed-monto">Monto en pesos</label>
-          <input id="ed-monto" className="pz-input" type="number" inputMode="decimal" step="0.01" value={monto} onChange={(e) => setMonto(e.target.value)} />
+          <input id="ed-monto" className="pz-input" type="text" inputMode="decimal" value={monto} onChange={(e) => setMonto(escribirMonto(e.target.value))} />
         </div>
         <div className="pz-campo">
           <label className="pz-label" htmlFor="ed-desc">{esGasto ? '¿En qué?' : '¿De dónde?'}</label>

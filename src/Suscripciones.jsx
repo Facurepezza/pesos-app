@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { supabase } from './supabaseClient'
 import Avatar from './Avatar'
 import Icono from './Iconos'
-import { plata, hoyISO, diasHasta, sumarMeses } from './utils'
+import { useConfirmar } from './Confirmar'
+import { plata, hoyISO, diasHasta, sumarMeses, escribirMonto, aNumero, montoATexto } from './utils'
 
 const DIAS_PARA_OCULTAR = 30
 
@@ -24,6 +25,7 @@ export default function Suscripciones({ usuarioId, refreshKey, oculto, onCambio 
   const [form, setForm] = useState(null) // null | {} (nueva) | suscripción a editar
   const [mostrarViejas, setMostrarViejas] = useState(false)
   const [aviso, setAviso] = useState(null)
+  const confirmar = useConfirmar()
 
   useEffect(() => {
     async function cargar() {
@@ -75,7 +77,12 @@ export default function Suscripciones({ usuarioId, refreshKey, oculto, onCambio 
   }
 
   async function darDeBaja(s) {
-    if (!window.confirm(`¿Dar de baja "${s.nombre}"? Deja de aparecer y no te avisamos más. El historial se conserva.`)) return
+    const ok = await confirmar({
+      titulo: `¿Dar de baja ${s.nombre}?`,
+      texto: 'Deja de aparecer y no te avisamos más. Los pagos que ya anotaste se conservan.',
+      boton: 'Dar de baja', peligro: true,
+    })
+    if (!ok) return
     const { data, error } = await supabase.from('suscripciones').update({ activa: false }).eq('id', s.id).select('id')
     if (error || !data || data.length === 0) return setAviso({ tipo: 'error', texto: error?.message || 'No se pudo dar de baja.' })
     refrescar(`${s.nombre} dada de baja.`)
@@ -152,14 +159,14 @@ export default function Suscripciones({ usuarioId, refreshKey, oculto, onCambio 
 function FormSuscripcion({ usuarioId, sub, tarjetas, onCerrar, onGuardado }) {
   const editando = Boolean(sub.id)
   const [nombre, setNombre] = useState(sub.nombre || '')
-  const [monto, setMonto] = useState(sub.monto_estimado ? String(sub.monto_estimado) : '')
+  const [monto, setMonto] = useState(montoATexto(sub.monto_estimado))
   const [tarjetaId, setTarjetaId] = useState(sub.tarjeta_id || '')
   const [vence, setVence] = useState(sub.proximo_vencimiento || hoyISO())
   const [error, setError] = useState(null)
   const [guardando, setGuardando] = useState(false)
 
   async function guardar() {
-    const valor = parseFloat(monto)
+    const valor = aNumero(monto)
     if (!nombre.trim()) return setError('Poné el nombre de la suscripción.')
     if (!valor || valor <= 0) return setError('El monto tiene que ser mayor a 0.')
     setGuardando(true)
@@ -193,7 +200,7 @@ function FormSuscripcion({ usuarioId, sub, tarjetas, onCerrar, onGuardado }) {
         </div>
         <div className="pz-campo">
           <label className="pz-label" htmlFor="s-monto">Monto por mes (en pesos)</label>
-          <input id="s-monto" className="pz-input" type="number" inputMode="decimal" step="0.01" value={monto} onChange={(e) => setMonto(e.target.value)} placeholder="0" />
+          <input id="s-monto" className="pz-input" type="text" inputMode="decimal" value={monto} onChange={(e) => setMonto(escribirMonto(e.target.value))} placeholder="0" />
         </div>
         <div className="pz-campo">
           <span className="pz-label">Se paga con</span>

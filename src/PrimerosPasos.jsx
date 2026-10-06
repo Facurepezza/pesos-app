@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { supabase } from './supabaseClient'
 import Avatar from './Avatar'
 import Icono from './Iconos'
-import { CONCEPTOS_INGRESO, MEDIOS_COBRO, hoyISO, plata } from './utils'
+import { CONCEPTOS_INGRESO, MEDIOS_COBRO, hoyISO, plata, escribirMonto, aNumero } from './utils'
 
 // Primeros pasos guiados la primera vez que alguien entra a PESOS:
 // nombre, cuánto cobra y qué día, tarjetas y suscripciones.
@@ -27,11 +27,7 @@ function colorPorDefecto(alias) {
 }
 
 // Convierte "350.000" o "350000,50" en número
-function numero(txt) {
-  const limpio = String(txt || '').replace(/\./g, '').replace(',', '.').replace(/[^0-9.]/g, '')
-  const n = parseFloat(limpio)
-  return Number.isFinite(n) ? n : 0
-}
+const numero = aNumero
 
 // Día válido entre 1 y 31, si no null
 function diaValido(txt) {
@@ -251,7 +247,7 @@ export default function PrimerosPasos({ usuario, onListo }) {
             <div className="pz-campo">
               <label className="pz-label" htmlFor="pp-monto">Monto en pesos</label>
               <input id="pp-monto" className="pz-input pz-input-grande" inputMode="decimal" value={ingreso.monto}
-                onChange={(e) => setIngreso({ ...ingreso, monto: e.target.value })} placeholder="$ 0" />
+                onChange={(e) => setIngreso({ ...ingreso, monto: escribirMonto(e.target.value) })} placeholder="$ 0" />
             </div>
 
             <div className="pz-campo">
@@ -363,7 +359,7 @@ export default function PrimerosPasos({ usuario, onListo }) {
                   <div className="pz-campo">
                     <label className="pz-label" htmlFor={`pp-m-${s.nombre}`}>¿Cuánto pagás?</label>
                     <input id={`pp-m-${s.nombre}`} className="pz-input" inputMode="decimal" placeholder="$ 0" value={s.monto}
-                      onChange={(e) => cambiarSub(s.nombre, 'monto', e.target.value)} />
+                      onChange={(e) => cambiarSub(s.nombre, 'monto', escribirMonto(e.target.value))} />
                   </div>
                   <div className="pz-campo">
                     <label className="pz-label" htmlFor={`pp-d-${s.nombre}`}>Día de cobro</label>

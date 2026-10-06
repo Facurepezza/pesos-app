@@ -3,6 +3,7 @@ import { supabase } from './supabaseClient'
 import Avatar from './Avatar'
 import Autocompletar from './Autocompletar'
 import Icono from './Iconos'
+import { useConfirmar } from './Confirmar'
 import { plata, claveMes, mesDesplazado, MESES } from './utils'
 
 const REDES = ['Visa', 'Mastercard', 'Amex', 'Otra']
@@ -25,6 +26,7 @@ export default function Tarjetas({ usuarioId, refreshKey, oculto, onCambio }) {
   const [recarga, setRecarga] = useState(0)
   const [form, setForm] = useState(null)
   const [aviso, setAviso] = useState(null)
+  const confirmar = useConfirmar()
 
   const ahora = new Date()
   const mesKey = claveMes(ahora.getFullYear(), ahora.getMonth())
@@ -74,7 +76,12 @@ export default function Tarjetas({ usuarioId, refreshKey, oculto, onCambio }) {
   const maxMes = Math.max(1, ...meses.map((m) => m.monto))
 
   async function borrar(t) {
-    if (!window.confirm(`¿Borrar la tarjeta "${t.alias}"? Los gastos se conservan, pero quedan sin tarjeta asignada.`)) return
+    const ok = await confirmar({
+      titulo: `¿Borrar ${t.alias}?`,
+      texto: 'Los gastos y suscripciones se conservan, pero quedan sin tarjeta asignada.',
+      boton: 'Borrar tarjeta', peligro: true,
+    })
+    if (!ok) return
     await supabase.from('gastos').update({ tarjeta_id: null }).eq('tarjeta_id', t.id)
     await supabase.from('suscripciones').update({ tarjeta_id: null }).eq('tarjeta_id', t.id)
     const { data, error } = await supabase.from('tarjetas').delete().eq('id', t.id).select('id')

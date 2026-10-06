@@ -3,11 +3,13 @@ import { supabase } from './supabaseClient'
 import Avatar from './Avatar'
 import Icono from './Iconos'
 import { useToast } from './Toast'
+import { useConfirmar } from './Confirmar'
 import { plata } from './utils'
 
 // Lista de gastos e ingresos que se cargan solos todos los meses
 export default function Fijos({ usuarioId, oculto, onCerrar, onCambio }) {
   const avisar = useToast()
+  const confirmar = useConfirmar()
   const [fijos, setFijos] = useState([])
   const [cargando, setCargando] = useState(true)
   const [recarga, setRecarga] = useState(0)
@@ -28,7 +30,12 @@ export default function Fijos({ usuarioId, oculto, onCerrar, onCambio }) {
   }
 
   async function borrar(f) {
-    if (!window.confirm(`¿Dejar de cargar "${f.descripcion}" todos los meses? Lo que ya se cargó no se borra.`)) return
+    const ok = await confirmar({
+      titulo: `¿Dejar de repetir ${f.descripcion}?`,
+      texto: 'No se carga más solo todos los meses. Lo que ya se cargó no se borra.',
+      boton: 'Dejar de repetir', peligro: true,
+    })
+    if (!ok) return
     await supabase.from('gastos').update({ recurrente_id: null }).eq('recurrente_id', f.id)
     await supabase.from('ingresos').update({ recurrente_id: null }).eq('recurrente_id', f.id)
     const { error } = await supabase.from('recurrentes').delete().eq('id', f.id)

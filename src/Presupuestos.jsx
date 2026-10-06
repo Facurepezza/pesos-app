@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from './supabaseClient'
 import Avatar from './Avatar'
 import Icono from './Iconos'
-import { plata, CATEGORIAS } from './utils'
+import { plata, CATEGORIAS, escribirMonto, aNumero, montoATexto } from './utils'
 
 // Topes mensuales por categoría, con barra de avance
 export default function Presupuestos({ usuarioId, porCategoria, oculto, refreshKey }) {
@@ -57,7 +57,7 @@ export default function Presupuestos({ usuarioId, porCategoria, oculto, refreshK
 }
 
 function EditarTopes({ usuarioId, topes, onCerrar, onGuardado }) {
-  const inicial = Object.fromEntries(topes.map((t) => [t.categoria, String(t.monto)]))
+  const inicial = Object.fromEntries(topes.map((t) => [t.categoria, montoATexto(t.monto)]))
   const [valores, setValores] = useState(inicial)
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState(null)
@@ -67,7 +67,7 @@ function EditarTopes({ usuarioId, topes, onCerrar, onGuardado }) {
     setError(null)
     try {
       for (const cat of CATEGORIAS) {
-        const v = parseFloat(valores[cat])
+        const v = aNumero(valores[cat])
         const existe = topes.find((t) => t.categoria === cat)
         if (v > 0) {
           const { error: e } = existe
@@ -99,8 +99,8 @@ function EditarTopes({ usuarioId, topes, onCerrar, onGuardado }) {
           <label key={cat} className="pz-tope">
             <Avatar nombre={cat} categoria={cat} size={34} />
             <span>{cat}</span>
-            <input className="pz-input" type="number" inputMode="numeric" placeholder="Sin tope" value={valores[cat] || ''}
-              onChange={(e) => setValores({ ...valores, [cat]: e.target.value })} aria-label={`Tope para ${cat}`} />
+            <input className="pz-input" type="text" inputMode="numeric" placeholder="Sin tope" value={valores[cat] || ''}
+              onChange={(e) => setValores({ ...valores, [cat]: escribirMonto(e.target.value) })} aria-label={`Tope para ${cat}`} />
           </label>
         ))}
         {error && <p className="pz-error">{error}</p>}

@@ -62,6 +62,40 @@ export const MEDIOS = { efectivo: 'Efectivo', mercado_pago: 'Mercado Pago', tarj
 // Cómo te pagaron un ingreso
 export const MEDIOS_COBRO = { banco: 'Cuenta bancaria', mercado_pago: 'Mercado Pago', efectivo: 'Efectivo', otro: 'Otro' }
 
+// ---------- Montos escritos a la argentina ----------
+// Punto = separador de miles, coma = decimales. Ej: "20.000" son veinte mil, "9,99" son nueve con 99.
+
+// Lo que se ve en el campo mientras escribís: pone los puntos de miles solo.
+// Si puntoDecimal es true (montos en dólares o euros), un punto escrito a mano cuenta como coma.
+export function escribirMonto(texto, puntoDecimal = false) {
+  let t = String(texto ?? '')
+  // Recién tipeaste un punto en un monto en dólares o euros: se toma como coma
+  if (puntoDecimal && !t.includes(',') && t.endsWith('.')) t = t.slice(0, -1) + ','
+  t = t.replace(/[^0-9,]/g, '')
+  const coma = t.indexOf(',')
+  let entero = coma === -1 ? t : t.slice(0, coma)
+  const decimales = coma === -1 ? null : t.slice(coma + 1).replace(/,/g, '').slice(0, 2)
+  entero = entero.replace(/^0+(?=\d)/, '')
+  const conPuntos = entero.replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+  if (decimales === null) return conPuntos
+  return `${conPuntos || '0'},${decimales}`
+}
+
+// Convierte lo escrito en un número para guardar
+export function aNumero(texto) {
+  const t = escribirMonto(texto).replace(/\./g, '').replace(',', '.')
+  const n = parseFloat(t)
+  return Number.isFinite(n) ? n : 0
+}
+
+// Un número guardado, listo para mostrarse en un campo (20000.5 -> "20.000,5")
+export function montoATexto(n) {
+  const v = Number(n)
+  if (!Number.isFinite(v) || v === 0) return ''
+  const [ent, dec] = String(Math.round(v * 100) / 100).split('.')
+  return escribirMonto(dec ? `${ent},${dec}` : ent)
+}
+
 // ---------- Cotizaciones (DolarAPI, gratis y sin clave) ----------
 let cache = null
 

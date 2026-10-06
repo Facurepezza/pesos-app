@@ -1,10 +1,9 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { supabase } from './supabaseClient'
 import Auth from './Auth'
 import Movimientos from './Movimientos'
 import Suscripciones from './Suscripciones'
 import Tarjetas from './Tarjetas'
-import Dashboard from './Dashboard'
 import Tutorial from './Tutorial'
 import Inicio from './Inicio'
 import CargarSheet from './CargarSheet'
@@ -16,8 +15,12 @@ import InstalarApp from './InstalarApp'
 import Perfil from './Perfil'
 import PrimerosPasos from './PrimerosPasos'
 import { ToastProvider, useToast } from './Toast'
+import { ConfirmarProvider } from './Confirmar'
 import './App.css'
 import './theme.css'
+
+// Las métricas (con los gráficos) se descargan recién cuando se abren: así la app arranca más rápido
+const Dashboard = lazy(() => import('./Dashboard'))
 
 const NAV = [
   { id: 'inicio', label: 'Inicio', icono: 'inicio' },
@@ -30,7 +33,9 @@ const NAV = [
 function App() {
   return (
     <ToastProvider>
-      <PesosApp />
+      <ConfirmarProvider>
+        <PesosApp />
+      </ConfirmarProvider>
     </ToastProvider>
   )
 }
@@ -133,7 +138,9 @@ function PesosApp() {
       )}
 
       {tab === 'resumen' && (
-        <Dashboard usuarioId={uid} refreshKey={refreshKey} oculto={oculto} onVolver={() => setTab('inicio')} />
+        <Suspense fallback={<div className="pz-screen"><p className="pz-vacio">Cargando métricas...</p></div>}>
+          <Dashboard usuarioId={uid} refreshKey={refreshKey} oculto={oculto} onVolver={() => setTab('inicio')} />
+        </Suspense>
       )}
 
       <nav className="pz-nav" aria-label="Navegación principal">

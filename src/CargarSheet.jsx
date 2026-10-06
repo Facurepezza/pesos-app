@@ -3,7 +3,7 @@ import { supabase } from './supabaseClient'
 import Autocompletar from './Autocompletar'
 import Avatar from './Avatar'
 import Icono from './Iconos'
-import { plata, hoyISO, sumarMeses, claveMes, CATEGORIAS, CONCEPTOS_INGRESO, MEDIOS_COBRO, traerCotizaciones } from './utils'
+import { plata, hoyISO, sumarMeses, claveMes, CATEGORIAS, CONCEPTOS_INGRESO, MEDIOS_COBRO, traerCotizaciones, escribirMonto, aNumero, montoATexto } from './utils'
 
 const CUOTAS = [1, 3, 6, 12]
 
@@ -61,9 +61,9 @@ export default function CargarSheet({ usuarioId, tipoInicial = 'gasto', onCerrar
     tasa = cot?.euro
     nombreTasa = 'euro oficial'
   }
-  if (moneda !== 'ARS' && cotManual) tasa = parseFloat(cotManual)
+  if (moneda !== 'ARS' && cotManual) tasa = aNumero(cotManual)
   const faltaCot = moneda !== 'ARS' && !tasa
-  const valor = parseFloat(String(monto).replace(',', '.')) || 0
+  const valor = aNumero(monto)
   const enPesos = moneda === 'ARS' ? valor : valor * (tasa || 0)
 
   async function obtenerOCrear(tabla, campo, valorTexto, extra = {}) {
@@ -177,8 +177,8 @@ export default function CargarSheet({ usuarioId, tipoInicial = 'gasto', onCerrar
     setCategoria(g.categorias?.nombre && CATEGORIAS.includes(g.categorias.nombre) ? g.categorias.nombre : '')
     setMedio(g.tarjeta_id ? 't:' + g.tarjeta_id : g.medio_pago || 'efectivo')
     if (!monto) {
-      if (g.moneda && g.moneda !== 'ARS' && g.monto_original) { setMoneda(g.moneda); setMonto(String(g.monto_original)) }
-      else if (!g.cuotas_total || g.cuotas_total === 1) setMonto(String(g.monto))
+      if (g.moneda && g.moneda !== 'ARS' && g.monto_original) { setMoneda(g.moneda); setMonto(montoATexto(g.monto_original)) }
+      else if (!g.cuotas_total || g.cuotas_total === 1) setMonto(montoATexto(g.monto))
     }
   }
 
@@ -204,20 +204,21 @@ export default function CargarSheet({ usuarioId, tipoInicial = 'gasto', onCerrar
           </div>
           <label className="pz-monto-fila">
             <span>{moneda === 'ARS' ? '$' : moneda === 'USD' ? 'US$' : '€'}</span>
-            <input type="number" inputMode="decimal" step="0.01" placeholder="0" value={monto}
-              onChange={(e) => setMonto(e.target.value)} aria-label="Monto" autoFocus />
+            <input type="text" inputMode="decimal" placeholder={moneda === 'ARS' ? '0' : '0,00'} value={monto}
+              style={{ width: `${Math.max(monto.length, moneda === 'ARS' ? 1 : 4) + 1.5}ch` }}
+              onChange={(e) => setMonto(escribirMonto(e.target.value, moneda !== 'ARS'))} aria-label="Monto" autoFocus />
           </label>
           {moneda !== 'ARS' && (
             faltaCot || cotManual !== '' ? (
               <div className="pz-campo" style={{ width: '100%' }}>
                 <label className="pz-label" htmlFor="cotm">Cotización en pesos ({nombreTasa})</label>
-                <input id="cotm" className="pz-input" type="number" inputMode="decimal" value={cotManual}
-                  placeholder="Ej: 1560" onChange={(e) => setCotManual(e.target.value)} />
+                <input id="cotm" className="pz-input" type="text" inputMode="decimal" value={cotManual}
+                  placeholder="Ej: 1.560" onChange={(e) => setCotManual(escribirMonto(e.target.value, true))} />
               </div>
             ) : (
               <div className="pz-conversion">
                 ≈ {plata(enPesos)} al {nombreTasa} de hoy ({plata(tasa)}){' '}
-                <button type="button" className="pz-link" onClick={() => setCotManual(String(tasa))}>cambiar</button>
+                <button type="button" className="pz-link" onClick={() => setCotManual(montoATexto(tasa))}>cambiar</button>
               </div>
             )
           )}
