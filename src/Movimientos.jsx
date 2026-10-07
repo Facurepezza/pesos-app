@@ -4,6 +4,7 @@ import Avatar from './Avatar'
 import Icono from './Iconos'
 import { useToast } from './Toast'
 import Fijos from './Fijos'
+import ErrorCarga from './ErrorCarga'
 import { plata, claveMes, mesDesplazado, fechaLinda, hoyISO, MESES_LARGO, CATEGORIAS, CONCEPTOS_INGRESO, MEDIOS, MEDIOS_COBRO, escribirMonto, aNumero, montoATexto } from './utils'
 
 export default function Movimientos({ usuarioId, refreshKey, oculto, onCambio }) {
@@ -15,6 +16,7 @@ export default function Movimientos({ usuarioId, refreshKey, oculto, onCambio })
   const [gastos, setGastos] = useState([])
   const [ingresos, setIngresos] = useState([])
   const [cargando, setCargando] = useState(true)
+  const [fallo, setFallo] = useState(false)
   const [recarga, setRecarga] = useState(0)
   const [abierto, setAbierto] = useState(null) // id de la fila con acciones abiertas
   const [editando, setEditando] = useState(null)
@@ -27,6 +29,7 @@ export default function Movimientos({ usuarioId, refreshKey, oculto, onCambio })
   useEffect(() => {
     async function cargar() {
       setCargando(true)
+      setFallo(false)
       const desde = `${mesKey}-01`
       const sig = mesDesplazado(sel.anio, sel.mes, 1)
       const hasta = `${claveMes(sig.anio, sig.mes)}-01`
@@ -38,8 +41,11 @@ export default function Movimientos({ usuarioId, refreshKey, oculto, onCambio })
           .select('id, monto, fecha, concepto, descripcion, recurrente_id, medio_cobro')
           .eq('usuario_id', usuarioId).gte('fecha', desde).lt('fecha', hasta).order('fecha', { ascending: false }),
       ])
-      setGastos(g.data || [])
-      setIngresos(i.data || [])
+      if (g.error || i.error) setFallo(true)
+      else {
+        setGastos(g.data || [])
+        setIngresos(i.data || [])
+      }
       setCargando(false)
     }
     cargar()
@@ -192,9 +198,11 @@ export default function Movimientos({ usuarioId, refreshKey, oculto, onCambio })
         {vista !== 'ingresos' && <div><span>Salió</span><b>- {plata(totalGastos, oculto)}</b></div>}
       </div>
 
+      {fallo && <ErrorCarga onReintentar={() => setRecarga((r) => r + 1)} />}
+
       <section className="pz-card pz-card-lista">
         {cargando && <p className="pz-vacio">Cargando...</p>}
-        {!cargando && grupos.length === 0 && <p className="pz-vacio">No hay movimientos en {MESES_LARGO[sel.mes]}.</p>}
+        {!cargando && !fallo && grupos.length === 0 && <p className="pz-vacio">No hay movimientos en {MESES_LARGO[sel.mes]}.</p>}
         {grupos.map((gr) => (
           <div key={gr.fecha}>
             <div className="pz-dia">{gr.fecha === hoy ? 'Hoy' : fechaLinda(gr.fecha)}{gr.fecha > hoy ? ' · programado' : ''}</div>

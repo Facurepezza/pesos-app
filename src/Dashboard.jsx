@@ -3,7 +3,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGri
 import { supabase } from './supabaseClient'
 import Avatar from './Avatar'
 import Icono from './Iconos'
-import { plata, claveMes, mesDesplazado, hoyISO, MESES, MESES_LARGO, MEDIOS, COLORES_CAT } from './utils'
+import { plata, claveMes, mesDesplazado, hoyISO, MESES, MESES_LARGO, MEDIOS, COLORES_CAT, traerCotizaciones, pesosSuscripcion, mensualSuscripcion } from './utils'
 
 // Pantalla de métricas con el diseño nuevo de PESOS
 const VERDE = '#0F4D35'
@@ -21,6 +21,11 @@ export default function Dashboard({ usuarioId, refreshKey, oculto = false, onVol
   const [subs, setSubs] = useState([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState('')
+  const [cot, setCot] = useState(null)
+
+  useEffect(() => {
+    traerCotizaciones().then(setCot)
+  }, [])
 
   useEffect(() => {
     async function cargar() {
@@ -34,7 +39,7 @@ export default function Dashboard({ usuarioId, refreshKey, oculto = false, onVol
         supabase.from('gastos').select('id, monto, fecha, medio_pago, descripcion, categorias(nombre)')
           .eq('usuario_id', usuarioId).gte('fecha', desde).lt('fecha', hasta),
         supabase.from('ingresos').select('monto, fecha').eq('usuario_id', usuarioId).gte('fecha', desde).lt('fecha', hasta),
-        supabase.from('suscripciones').select('nombre, monto_estimado, proximo_vencimiento').eq('usuario_id', usuarioId).eq('activa', true),
+        supabase.from('suscripciones').select('nombre, monto_estimado, moneda, monto_original, frecuencia, proximo_vencimiento').eq('usuario_id', usuarioId).eq('activa', true),
       ])
       const falla = g.error || ing.error || s.error
       if (falla) setError(falla.message)
@@ -69,7 +74,7 @@ export default function Dashboard({ usuarioId, refreshKey, oculto = false, onVol
 
     const hoyTxt = hoyISO()
     const pendientes = subs.filter((x) => String(x.proximo_vencimiento || '').slice(0, 7) === k && x.proximo_vencimiento >= hoyTxt)
-    const fijoMensual = subs.reduce((s, x) => s + Number(x.monto_estimado || 0), 0)
+    const fijoMensual = subs.reduce((s, x) => s + mensualSuscripcion(x, cot), 0)
 
     // Por categoría, con comparación contra el mes anterior
     const cats = {}
@@ -96,10 +101,10 @@ export default function Dashboard({ usuarioId, refreshKey, oculto = false, onVol
 
     return {
       esMesActual, total, ingMes, balance, pctAhorro, variacion, porDia, aEsteRitmo, diasMes,
-      pendientes: sumar(pendientes.map((x) => ({ monto: x.monto_estimado }))), cantPendientes: pendientes.length,
+      pendientes: sumar(pendientes.map((x) => ({ monto: pesosSuscripcion(x, cot) }))), cantPendientes: pendientes.length,
       fijoMensual, cantSubs: subs.length, categorias, mediosArr, evolucion, grandes, cantidad: gMes.length,
     }
-  }, [gastos, ingresos, subs, sel]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [gastos, ingresos, subs, sel, cot]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const esFuturo = claveMes(sel.anio, sel.mes) >= claveMes(hoy.getFullYear(), hoy.getMonth())
   const gastadoPct = d.ingMes > 0 ? Math.min(100, (d.total / d.ingMes) * 100) : 0

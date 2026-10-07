@@ -9,14 +9,13 @@ import Inicio from './Inicio'
 import CargarSheet from './CargarSheet'
 import Icono from './Iconos'
 import { ordenarDatos } from './ordenarDatos'
-import { generarRecurrentes } from './recurrentes'
+import { generarRecurrentes, debitarSuscripciones } from './recurrentes'
 import NuevaClave from './NuevaClave'
 import InstalarApp from './InstalarApp'
 import Perfil from './Perfil'
 import PrimerosPasos from './PrimerosPasos'
 import { ToastProvider, useToast } from './Toast'
 import { ConfirmarProvider } from './Confirmar'
-import './App.css'
 import './theme.css'
 
 // Las métricas (con los gráficos) se descargan recién cuando se abren: así la app arranca más rápido
@@ -79,6 +78,13 @@ function PesosApp() {
         avisar(`Se cargaron solos ${n} movimiento${n === 1 ? '' : 's'} fijo${n === 1 ? '' : 's'} ✓`)
       }
     })
+    // Anota solas las suscripciones con débito automático que ya vencieron
+    debitarSuscripciones(uidSesion).then((n) => {
+      if (n > 0) {
+        setRefreshKey((k) => k + 1)
+        avisar(`Se anotaron solos ${n} débito${n === 1 ? '' : 's'} automático${n === 1 ? '' : 's'} ✓`)
+      }
+    })
   }, [uidSesion, avisar])
 
   // Primeros pasos: solo para cuentas nuevas (sin datos cargados)
@@ -106,10 +112,10 @@ function PesosApp() {
     return () => { cancelado = true }
   }, [uidSesion, yaHizoPasos])
 
-  if (cargandoSesion) return <p className="cargando">Cargando...</p>
+  if (cargandoSesion) return <p className="pz-cargando">Cargando...</p>
   if (recuperando) return <NuevaClave onListo={() => setRecuperando(false)} />
   if (!session) return <Auth />
-  if (pasos === 'revisando') return <p className="cargando">Cargando...</p>
+  if (pasos === 'revisando') return <p className="pz-cargando">Cargando...</p>
   if (pasos === 'mostrar') {
     return <PrimerosPasos usuario={session.user} onListo={() => { setPasos('listo'); setTab('inicio'); refrescar() }} />
   }

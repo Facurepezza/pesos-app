@@ -3,12 +3,45 @@ import { supabase } from './supabaseClient'
 import Avatar from './Avatar'
 import Autocompletar from './Autocompletar'
 import Icono from './Iconos'
+import ErrorCarga from './ErrorCarga'
 import { useConfirmar } from './Confirmar'
-import { plata, claveMes, mesDesplazado, MESES } from './utils'
+import { plata, claveMes, mesDesplazado, hoyISO, MESES } from './utils'
 
 const REDES = ['Visa', 'Mastercard', 'Amex', 'Otra']
 const COLORES = ['#0B3626', '#1F2933', '#F26A1B', '#1E40AF', '#6D28D9', '#B91C1C']
 const textoSobre = (color) => (color === '#F26A1B' ? '#1A0F08' : '#FFFFFF')
+
+const pad = (n) => String(n).padStart(2, '0')
+
+// Fecha del día X de un mes (si el mes no tiene ese día, usa el último)
+function fechaDia(anio, mes, dia) {
+  const d = new Date(anio, mes, 1)
+  const ultimo = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(Math.min(dia, ultimo))}`
+}
+
+const mesDe = (iso) => { const [a, m] = iso.split('-').map(Number); return { a, m: m - 1 } }
+const corta = (iso) => `${Number(iso.slice(8, 10))}/${Number(iso.slice(5, 7))}`
+
+// Ciclo de la tarjeta: de cierre a cierre, con su vencimiento
+function cicloDe(t) {
+  if (!t.dia_cierre) return null
+  const hoy = hoyISO()
+  const h = new Date()
+  let cierre = fechaDia(h.getFullYear(), h.getMonth(), t.dia_cierre)
+  if (cierre < hoy) cierre = fechaDia(h.getFullYear(), h.getMonth() + 1, t.dia_cierre)
+  const c = mesDe(cierre)
+  const cierreAnt = fechaDia(c.a, c.m - 1, t.dia_cierre)
+  const cierreAntAnt = fechaDia(c.a, c.m - 2, t.dia_cierre)
+  // El vencimiento es el primer día "dia_vencimiento" después del cierre
+  const venceDe = (ci) => {
+    if (!t.dia_vencimiento) return null
+    const x = mesDe(ci)
+    const mismoMes = fechaDia(x.a, x.m, t.dia_vencimiento)
+    return mismoMes > ci ? mismoMes : fechaDia(x.a, x.m + 1, t.dia_vencimiento)
+  }
+  return { cierre, cierreAnt, cierreAntAnt, vence: venceDe(cierre), venceAnt: venceDe(cierreAnt) }
+}
 
 function colorPorDefecto(alias) {
   const a = (alias || '').toLowerCase()
@@ -26,33 +59,43 @@ export default function Tarjetas({ usuarioId, refreshKey, oculto, onCambio }) {
   const [recarga, setRecarga] = useState(0)
   const [form, setForm] = useState(null)
   const [aviso, setAviso] = useState(null)
+  const [fallo, setFallo] = useState(false)
   const confirmar = useConfirmar()
 
   const ahora = new Date()
   const mesKey = claveMes(ahora.getFullYear(), ahora.getMonth())
+  const hoy = hoyISO()
 
   useEffect(() => {
     async function cargar() {
       setCargando(true)
+      setFallo(false)
+      // Se traen 3 meses para atrás, así se pueden armar los resúmenes de cierre a cierre
+      const desde = mesDesplazado(ahora.getFullYear(), ahora.getMonth(), -3)
       const [t, g] = await Promise.all([
         supabase.from('tarjetas').select('id, alias, red, dia_cierre, dia_vencimiento, color, ultimos4').eq('usuario_id', usuarioId).order('alias'),
         supabase.from('gastos')
           .select('id, monto, fecha, descripcion, tarjeta_id, compra_id, cuota_num, cuotas_total, categorias(nombre)')
-          .eq('usuario_id', usuarioId).not('tarjeta_id', 'is', null).gte('fecha', `${mesKey}-01`),
+          .eq('usuario_id', usuarioId).not('tarjeta_id', 'is', null).gte('fecha', `${claveMes(desde.anio, desde.mes)}-01`),
       ])
-      setTarjetas(t.data || [])
-      setGastos(g.data || [])
+      if (t.error || g.error) setFallo(true)
+      else {
+        setTarjetas(t.data || [])
+        setGastos(g.data || [])
+      }
       setCargando(false)
     }
     cargar()
-  }, [usuarioId, refreshKey, recarga, mesKey])
+  }, [usuarioId, refreshKey, recarga]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const delMes = (tid) => gastos.filter((g) => g.tarjeta_id === tid && g.fecha.slice(0, 7) === mesKey)
+    .reduce((a, g) => a + Number(g.monto), 0)
+  const entre = (tid, desde, hasta) => gastos.filter((g) => g.tarjeta_id === tid && g.fecha > desde && g.fecha <= hasta)
     .reduce((a, g) => a + Number(g.monto), 0)
 
   // Cuotas: agrupar por compra
   const compras = {}
-  gastos.filter((g) => g.compra_id).forEach((g) => {
+  gastos.filter((g) => g.compra_id && g.fecha.slice(0, 7) >= mesKey).forEach((g) => {
     const c = compras[g.compra_id] || (compras[g.compra_id] = {
       id: g.compra_id, nombre: g.descripcion || g.categorias?.nombre || 'Compra en cuotas', total: g.cuotas_total,
       tarjeta: g.tarjeta_id, porCuota: Number(g.monto), falta: 0, pendientes: 0, primeraPendiente: null,
@@ -103,7 +146,9 @@ export default function Tarjetas({ usuarioId, refreshKey, oculto, onCambio }) {
 
       {aviso && <p className={aviso.tipo === 'error' ? 'pz-error' : 'pz-ok'}>{aviso.texto}</p>}
 
-      {cargando ? (
+      {fallo ? (
+        <ErrorCarga onReintentar={() => setRecarga((r) => r + 1)} />
+      ) : cargando ? (
         <p className="pz-vacio">Cargando...</p>
       ) : tarjetas.length === 0 ? (
         <section className="pz-card"><p className="pz-vacio">Todavía no agregaste tarjetas. Sumá tu Visa, Mastercard o Naranja X para ver cuánto llevás gastado y tus cuotas.</p></section>
@@ -111,6 +156,9 @@ export default function Tarjetas({ usuarioId, refreshKey, oculto, onCambio }) {
         <div className="pz-tarjetas">
           {tarjetas.map((t) => {
             const color = t.color || colorPorDefecto(t.alias)
+            const ciclo = cicloDe(t)
+            const proximo = ciclo ? entre(t.id, ciclo.cierreAnt, ciclo.cierre) : 0
+            const aPagar = ciclo && ciclo.venceAnt && ciclo.venceAnt >= hoy ? entre(t.id, ciclo.cierreAntAnt, ciclo.cierreAnt) : 0
             return (
               <button key={t.id} type="button" className="pz-tarjeta" style={{ background: color, color: textoSobre(color) }}
                 onClick={() => setForm(t)} aria-label={`Editar ${t.alias}`}>
@@ -119,13 +167,17 @@ export default function Tarjetas({ usuarioId, refreshKey, oculto, onCambio }) {
                   <small>{(t.red || '').toUpperCase()}</small>
                 </span>
                 <span className="pz-tarjeta-mid">
-                  <small>Gastado este mes</small>
-                  <strong>{plata(delMes(t.id), oculto)}</strong>
+                  <small>{ciclo ? 'Próximo resumen' : 'Gastado este mes'}</small>
+                  <strong>{plata(ciclo ? proximo : delMes(t.id), oculto)}</strong>
+                  {aPagar > 0 && (
+                    <span className="pz-tarjeta-apagar">A pagar el {corta(ciclo.venceAnt)}: {plata(aPagar, oculto)}</span>
+                  )}
                 </span>
                 <span className="pz-tarjeta-pie">
                   <small>
-                    {t.dia_cierre ? `Cierra el ${t.dia_cierre}` : 'Tocá para cargar el cierre'}
-                    {t.dia_vencimiento ? ` · Vence el ${t.dia_vencimiento}` : ''}
+                    {ciclo
+                      ? `Cierra el ${corta(ciclo.cierre)}${ciclo.vence ? ` · vence el ${corta(ciclo.vence)}` : ''}`
+                      : 'Tocá para cargar el cierre'}
                   </small>
                   {t.ultimos4 && <small className="pz-tarjeta-num">•••• {t.ultimos4}</small>}
                 </span>
@@ -135,6 +187,7 @@ export default function Tarjetas({ usuarioId, refreshKey, oculto, onCambio }) {
         </div>
       )}
 
+      {!fallo && (
       <section className="pz-card">
         <div className="pz-top">
           <h2 className="pz-h2">Cuotas pendientes</h2>
@@ -176,6 +229,7 @@ export default function Tarjetas({ usuarioId, refreshKey, oculto, onCambio }) {
           </>
         )}
       </section>
+      )}
 
       {form && (
         <FormTarjeta usuarioId={usuarioId} tarjeta={form} onCerrar={() => setForm(null)} onBorrar={borrar}

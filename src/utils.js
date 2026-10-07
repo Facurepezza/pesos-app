@@ -96,6 +96,26 @@ export function montoATexto(n) {
   return escribirMonto(dec ? `${ent},${dec}` : ent)
 }
 
+// ---------- Suscripciones ----------
+// Lo que sale en pesos una suscripción hoy (si es en dólares, al dólar tarjeta del día)
+export function pesosSuscripcion(s, cot) {
+  if (s.moneda === 'USD' && Number(s.monto_original) > 0) {
+    if (cot?.tarjeta) return Number(s.monto_original) * cot.tarjeta
+  }
+  return Number(s.monto_estimado) || 0
+}
+
+// Lo que pesa por mes (una anual se reparte en 12)
+export function mensualSuscripcion(s, cot) {
+  const p = pesosSuscripcion(s, cot)
+  return s.frecuencia === 'anual' ? p / 12 : p
+}
+
+// Próximo vencimiento después de pagar (un mes o un año más)
+export function siguienteVencimiento(s, desde) {
+  return sumarMeses(desde, s.frecuencia === 'anual' ? 12 : 1)
+}
+
 // ---------- Cotizaciones (DolarAPI, gratis y sin clave) ----------
 let cache = null
 

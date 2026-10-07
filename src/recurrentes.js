@@ -1,5 +1,5 @@
 import { supabase } from './supabaseClient'
-import { hoyISO, claveMes, mesDesplazado } from './utils'
+import { hoyISO, claveMes, mesDesplazado, traerCotizaciones, pesosSuscripcion, siguienteVencimiento } from './utils'
 
 const pad = (n) => String(n).padStart(2, '0')
 
@@ -52,6 +52,60 @@ async function generar(usuarioId) {
     }
     if (ultimoHecho !== f.ultimo_mes) {
       await supabase.from('recurrentes').update({ ultimo_mes: ultimoHecho }).eq('id', f.id)
+    }
+  }
+  return cargados
+}
+
+// ---------- Suscripciones con débito automático ----------
+// El día del vencimiento anota el gasto solo y pasa la suscripción al próximo período.
+let debitando = null
+
+export function debitarSuscripciones(usuarioId) {
+  if (!debitando) debitando = debitar(usuarioId).finally(() => { setTimeout(() => { debitando = null }, 2000) })
+  return debitando
+}
+
+async function debitar(usuarioId) {
+  const hoy = hoyISO()
+  const { data: subs, error } = await supabase.from('suscripciones')
+    .select('id, nombre, monto_estimado, moneda, monto_original, frecuencia, tarjeta_id, proximo_vencimiento')
+    .eq('usuario_id', usuarioId).eq('activa', true).eq('debito_auto', true).lte('proximo_vencimiento', hoy)
+  if (error || !subs || subs.length === 0) return 0
+
+  const cot = await traerCotizaciones()
+  let categoriaId = null
+  const { data: cat } = await supabase.from('categorias').select('id').eq('usuario_id', usuarioId).ilike('nombre', 'Suscripciones').maybeSingle()
+  if (cat) categoriaId = cat.id
+  else {
+    const { data: nueva } = await supabase.from('categorias').insert({ usuario_id: usuarioId, nombre: 'Suscripciones' }).select('id').single()
+    categoriaId = nueva?.id || null
+  }
+
+  let cargados = 0
+  for (const s of subs) {
+    let fecha = s.proximo_vencimiento
+    for (let vuelta = 0; vuelta < 24 && fecha <= hoy; vuelta++) {
+      const siguiente = siguienteVencimiento(s, fecha)
+      // Primero mueve el vencimiento (solo si nadie lo movió antes): así nunca se anota dos veces
+      const { data: movida } = await supabase.from('suscripciones').update({ proximo_vencimiento: siguiente })
+        .eq('id', s.id).eq('proximo_vencimiento', fecha).select('id')
+      if (!movida || movida.length === 0) break
+      const enDolares = s.moneda === 'USD' && Number(s.monto_original) > 0
+      const pesos = Math.round(pesosSuscripcion(s, cot) * 100) / 100
+      const { error: e } = await supabase.from('gastos').insert({
+        usuario_id: usuarioId, monto: pesos, fecha, descripcion: s.nombre, categoria_id: categoriaId,
+        tarjeta_id: s.tarjeta_id, medio_pago: s.tarjeta_id ? 'tarjeta' : 'efectivo',
+        moneda: enDolares ? 'USD' : 'ARS', monto_original: enDolares ? Number(s.monto_original) : null,
+        cotizacion: enDolares ? Math.round((pesos / Number(s.monto_original)) * 100) / 100 : null,
+      })
+      if (e) {
+        // Si no se pudo anotar el gasto, el vencimiento vuelve a donde estaba
+        await supabase.from('suscripciones').update({ proximo_vencimiento: fecha }).eq('id', s.id)
+        break
+      }
+      cargados += 1
+      fecha = siguiente
     }
   }
   return cargados
