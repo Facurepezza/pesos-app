@@ -3,7 +3,8 @@ import { supabase } from './supabaseClient'
 import Avatar from './Avatar'
 import Icono from './Iconos'
 import Presupuestos from './Presupuestos'
-import { plata, hoyISO, claveMes, diasHasta, DIAS, MESES_LARGO, COLORES_CAT, traerCotizaciones } from './utils'
+import ErrorCarga from './ErrorCarga'
+import { plata, hoyISO, claveMes, diasHasta, DIAS, MESES_LARGO, COLORES_CAT, MEDIOS, MEDIOS_COBRO, traerCotizaciones, pesosSuscripcion } from './utils'
 
 export default function Inicio({ usuarioId, email, refreshKey, oculto, setOculto, onSalir, irA }) {
   const [gastos, setGastos] = useState([])
@@ -11,6 +12,8 @@ export default function Inicio({ usuarioId, email, refreshKey, oculto, setOculto
   const [subs, setSubs] = useState([])
   const [cot, setCot] = useState(null)
   const [cargando, setCargando] = useState(true)
+  const [fallo, setFallo] = useState(false)
+  const [recarga, setRecarga] = useState(0)
 
   const ahora = new Date()
   const mesClave = claveMes(ahora.getFullYear(), ahora.getMonth())
@@ -25,25 +28,29 @@ export default function Inicio({ usuarioId, email, refreshKey, oculto, setOculto
   useEffect(() => {
     async function cargar() {
       setCargando(true)
+      setFallo(false)
       const desde = `${mesClave}-01`
       const [g, i, s] = await Promise.all([
         supabase.from('gastos')
           .select('id, monto, fecha, descripcion, medio_pago, moneda, monto_original, categorias(nombre), tarjetas(alias)')
           .eq('usuario_id', usuarioId).gte('fecha', desde).order('fecha', { ascending: false }),
         supabase.from('ingresos')
-          .select('id, monto, fecha, concepto, descripcion')
+          .select('id, monto, fecha, concepto, descripcion, medio_cobro')
           .eq('usuario_id', usuarioId).gte('fecha', desde).order('fecha', { ascending: false }),
         supabase.from('suscripciones')
-          .select('id, nombre, monto_estimado, proximo_vencimiento, tarjetas(alias)')
+          .select('id, nombre, monto_estimado, moneda, monto_original, frecuencia, debito_auto, proximo_vencimiento, tarjetas(alias)')
           .eq('usuario_id', usuarioId).eq('activa', true).order('proximo_vencimiento'),
       ])
-      setGastos(g.data || [])
-      setIngresos(i.data || [])
-      setSubs(s.data || [])
+      if (g.error || i.error || s.error) setFallo(true)
+      else {
+        setGastos(g.data || [])
+        setIngresos(i.data || [])
+        setSubs(s.data || [])
+      }
       setCargando(false)
     }
     cargar()
-  }, [usuarioId, refreshKey, mesClave])
+  }, [usuarioId, refreshKey, mesClave, recarga])
 
   // Solo lo que ya pasó cuenta para el mes (las cuotas futuras quedan para su mes)
   const gastosMes = gastos.filter((g) => g.fecha.slice(0, 7) === mesClave && g.fecha <= hoy)
@@ -59,10 +66,12 @@ export default function Inicio({ usuarioId, email, refreshKey, oculto, setOculto
   let textoVenc = ''
   if (proxima) {
     const d = diasHasta(proxima.proximo_vencimiento)
-    textoVenc = d < 0 ? `venció hace ${-d} día${d === -1 ? '' : 's'}` : d === 0 ? 'vence hoy' : `vence en ${d} día${d === 1 ? '' : 's'}`
+    const verbo = proxima.debito_auto ? 'se debita' : 'vence'
+    textoVenc = d < 0 ? `venció hace ${-d} día${d === -1 ? '' : 's'}` : d === 0 ? `${verbo} hoy` : `${verbo} en ${d} día${d === 1 ? '' : 's'}`
   }
+  const montoProxima = proxima ? pesosSuscripcion(proxima, cot) : 0
   const msjWsp = proxima
-    ? `Recordatorio PESOS: ${proxima.nombre} (${plata(proxima.monto_estimado)}) ${textoVenc}.`
+    ? `Recordatorio PESOS: ${proxima.nombre} (${plata(montoProxima)}) ${textoVenc}.`
     : ''
 
   // En qué se fue
@@ -82,11 +91,12 @@ export default function Inicio({ usuarioId, email, refreshKey, oculto, setOculto
     ...gastos.filter((g) => g.fecha <= hoy).map((g) => ({
       id: 'g' + g.id, fecha: g.fecha, nombre: g.descripcion || g.categorias?.nombre || 'Gasto',
       categoria: g.categorias?.nombre,
-      detalle: [g.categorias?.nombre, g.tarjetas?.alias || (g.medio_pago === 'mercado_pago' ? 'Mercado Pago' : g.medio_pago === 'efectivo' ? 'Efectivo' : null)].filter(Boolean).join(' · '),
+      detalle: [g.categorias?.nombre, g.tarjetas?.alias || (g.medio_pago !== 'tarjeta' ? MEDIOS[g.medio_pago] : null)].filter(Boolean).join(' · '),
       monto: -Number(g.monto), moneda: g.moneda, original: g.monto_original,
     })),
     ...ingresos.map((i) => ({
-      id: 'i' + i.id, fecha: i.fecha, nombre: i.descripcion || i.concepto, categoria: i.concepto, detalle: `Ingreso · ${i.concepto}`, monto: Number(i.monto),
+      id: 'i' + i.id, fecha: i.fecha, nombre: i.descripcion || i.concepto, categoria: i.concepto, monto: Number(i.monto),
+      detalle: ['Ingreso', i.concepto, MEDIOS_COBRO[i.medio_cobro]].filter(Boolean).join(' · '),
     })),
   ].sort((a, b) => (a.fecha < b.fecha ? 1 : -1)).slice(0, 5)
 
@@ -119,6 +129,8 @@ export default function Inicio({ usuarioId, email, refreshKey, oculto, setOculto
         </div>
       )}
 
+      {fallo ? <ErrorCarga onReintentar={() => setRecarga((r) => r + 1)} /> : (
+      <>
       <section className="pz-hero">
         <div className="pz-hero-top">
           <span>Balance de {MESES_LARGO[ahora.getMonth()]}</span>
@@ -147,7 +159,7 @@ export default function Inicio({ usuarioId, email, refreshKey, oculto, setOculto
           <Avatar nombre={proxima.nombre} />
           <div className="pz-alerta-txt">
             <b>{proxima.nombre} {textoVenc}</b>
-            <span>{plata(proxima.monto_estimado, oculto)}{proxima.tarjetas?.alias ? ` · ${proxima.tarjetas.alias}` : ''}</span>
+            <span>{plata(montoProxima, oculto)}{proxima.tarjetas?.alias ? ` · ${proxima.tarjetas.alias}` : ''}{proxima.debito_auto ? ' · automático' : ''}</span>
           </div>
           <a className="pz-btn pz-btn-oscuro" href={`https://wa.me/?text=${encodeURIComponent(msjWsp)}`} target="_blank" rel="noopener noreferrer">
             <Icono nombre="mensaje" size={15} /> Avisarme
@@ -205,6 +217,8 @@ export default function Inicio({ usuarioId, email, refreshKey, oculto, setOculto
           </div>
         ))}
       </section>
+      </>
+      )}
     </div>
   )
 }
