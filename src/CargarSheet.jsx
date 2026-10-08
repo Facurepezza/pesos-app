@@ -3,9 +3,14 @@ import { supabase } from './supabaseClient'
 import Autocompletar from './Autocompletar'
 import Avatar from './Avatar'
 import Icono from './Iconos'
+import { interpretar } from './rapido'
 import { plata, hoyISO, sumarMeses, claveMes, CATEGORIAS, CONCEPTOS_INGRESO, MEDIOS_COBRO, traerCotizaciones, escribirMonto, aNumero, montoATexto } from './utils'
 
 const CUOTAS = [1, 3, 6, 12]
+const PERSONAS = [2, 3, 4, 5, 6]
+
+// "Juan, Franco y Sofi" -> ['Juan', 'Franco', 'Sofi']
+const separarNombres = (t) => (t || '').split(/,| y | e /).map((x) => x.trim()).filter(Boolean)
 
 export default function CargarSheet({ usuarioId, tipoInicial = 'gasto', onCerrar, onGuardado }) {
   const [tipo, setTipo] = useState(tipoInicial)
@@ -24,6 +29,10 @@ export default function CargarSheet({ usuarioId, tipoInicial = 'gasto', onCerrar
   const [cot, setCot] = useState(null)
   const [cotManual, setCotManual] = useState('')
   const [repetir, setRepetir] = useState(false)
+  const [rapido, setRapido] = useState('')
+  const [dividir, setDividir] = useState(false)
+  const [entre, setEntre] = useState(2)
+  const [quienes, setQuienes] = useState('')
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState(null)
 
@@ -65,6 +74,30 @@ export default function CargarSheet({ usuarioId, tipoInicial = 'gasto', onCerrar
   const faltaCot = moneda !== 'ARS' && !tasa
   const valor = aNumero(monto)
   const enPesos = moneda === 'ARS' ? valor : valor * (tasa || 0)
+  const puedeDividir = tipo === 'gasto' && !repetir && !(esTarjeta && cuotas > 1)
+  const divide = dividir && puedeDividir
+  const nombres = separarNombres(quienes)
+  const tuParte = divide ? enPesos / entre : enPesos
+
+  // Carga rápida: completa el formulario mientras escribís
+  function escribirRapido(texto) {
+    setRapido(texto)
+    const r = interpretar(texto, tarjetas)
+    if (r.tipo) setTipo(r.tipo)
+    const esIngreso = (r.tipo || tipo) === 'ingreso'
+    if (r.moneda) setMoneda(r.moneda)
+    if (r.monto) setMonto(montoATexto(r.monto))
+    if (r.descripcion) setDescripcion(r.descripcion)
+    if (esIngreso) {
+      if (r.concepto) setConcepto(r.concepto)
+      if (r.medio === 'mercado_pago' || r.medio === 'efectivo') setMedioCobro(r.medio)
+    } else {
+      if (r.categoria) setCategoria(r.categoria)
+      if (r.medio) setMedio(r.medio)
+      if (r.cuotas) setCuotas(r.cuotas)
+      if (r.entre) { setDividir(true); setEntre(r.entre) }
+    }
+  }
 
   async function obtenerOCrear(tabla, campo, valorTexto, extra = {}) {
     const limpio = valorTexto.trim()
@@ -98,6 +131,7 @@ export default function CargarSheet({ usuarioId, tipoInicial = 'gasto', onCerrar
     setError(null)
     if (!valor || valor <= 0) return setError('Poné un monto mayor a 0.')
     if (faltaCot) return setError('Falta la cotización para convertir a pesos.')
+    if (divide && nombres.length > entre - 1) return setError(`Pusiste ${nombres.length} nombres pero dividiste entre ${entre}. Sumá personas o sacá nombres.`)
     setGuardando(true)
     try {
       const montoPesos = Math.round(enPesos * 100) / 100
@@ -145,7 +179,7 @@ export default function CargarSheet({ usuarioId, tipoInicial = 'gasto', onCerrar
       const base = {
         usuario_id: usuarioId, categoria_id: categoriaId, tarjeta_id: tarjetaId, medio_pago: medioPago,
         descripcion: descripcion.trim() || null, moneda,
-        monto_original: moneda === 'ARS' ? null : valor,
+        monto_original: moneda === 'ARS' ? null : Math.round((divide ? valor / entre : valor) * 100) / 100,
         cotizacion: moneda === 'ARS' ? null : tasa,
         recurrente_id: recurrenteId,
       }
@@ -158,10 +192,29 @@ export default function CargarSheet({ usuarioId, tipoInicial = 'gasto', onCerrar
           compra_id: compraId, cuota_num: i + 1, cuotas_total: n,
         }))
       } else {
-        filas = [{ ...base, monto: montoPesos, fecha }]
+        filas = [{ ...base, monto: divide ? Math.round(tuParte * 100) / 100 : montoPesos, fecha }]
       }
-      const { error: err } = await supabase.from('gastos').insert(filas)
+      const { data: guardados, error: err } = await supabase.from('gastos').insert(filas).select('id')
       if (err) throw err
+
+      // Si lo dividió: anota quién le debe
+      if (divide) {
+        const parte = Math.round(tuParte * 100) / 100
+        const queDebe = Math.round((enPesos - tuParte) * 100) / 100
+        const que = descripcion.trim() || categoria || 'Gasto compartido'
+        const deudas = nombres.length
+          ? nombres.map((persona) => ({ persona, monto: Math.round((queDebe / nombres.length) * 100) / 100 }))
+          : [{ persona: entre - 1 === 1 ? 'La otra persona' : `Los otros ${entre - 1}`, monto: queDebe }]
+        const { error: eD } = await supabase.from('deudas').insert(deudas.map((d) => ({
+          ...d, usuario_id: usuarioId, descripcion: que, fecha, gasto_id: String(guardados?.[0]?.id || ''), pagada: false,
+        })))
+        if (eD) {
+          onGuardado(`Guardamos tu parte (${plata(parte)}), pero no pudimos anotar quién te debe: ${eD.message}`, 'error')
+          return
+        }
+        onGuardado(`Listo: tu parte es ${plata(parte)} y te deben ${plata(queDebe)} ✓`)
+        return
+      }
 
       const alerta = await chequearPresupuesto(categoriaId)
       if (alerta) onGuardado(alerta.texto, alerta.tipo)
@@ -195,6 +248,13 @@ export default function CargarSheet({ usuarioId, tipoInicial = 'gasto', onCerrar
             <Icono nombre="cerrar" size={18} />
           </button>
         </div>
+
+        <label className="pz-rapido">
+          <Icono nombre="rayo" size={18} />
+          <input value={rapido} onChange={(e) => escribirRapido(e.target.value)} aria-label="Carga rápida"
+            onKeyDown={(e) => { if (e.key === 'Enter' && valor > 0) { e.preventDefault(); guardar() } }}
+            placeholder="Rápido: mc 8500 mp · netflix 20 usd · cena 32000 entre 4" />
+        </label>
 
         <div className="pz-monto-grande">
           <div className="pz-monedas">
@@ -321,7 +381,34 @@ export default function CargarSheet({ usuarioId, tipoInicial = 'gasto', onCerrar
           <input id="fecha" className="pz-input" type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />
         </div>
 
-        {!(esTarjeta && cuotas > 1) && (
+        {puedeDividir && (
+          <div className="pz-campo">
+            <label className="pz-switch">
+              <input type="checkbox" checked={dividir} onChange={(e) => setDividir(e.target.checked)} />
+              <span className="pz-switch-pista" aria-hidden="true"><span /></span>
+              <span className="pz-switch-txt">
+                <b>Lo dividí con otros</b>
+                <small>{divide && valor > 0
+                  ? `Tu parte: ${plata(tuParte)} · Te deben ${plata(enPesos - tuParte)}`
+                  : 'Pagaste vos y te tienen que devolver. Se cuenta solo tu parte.'}</small>
+              </span>
+            </label>
+            {divide && (
+              <>
+                <span className="pz-label">¿Entre cuántos, contándote a vos?</span>
+                <div className="pz-chips">
+                  {PERSONAS.map((n) => (
+                    <button key={n} type="button" className={`pz-chip pz-chip-dia ${entre === n ? 'on' : ''}`} onClick={() => setEntre(n)}>{n}</button>
+                  ))}
+                </div>
+                <input className="pz-input" value={quienes} onChange={(e) => setQuienes(e.target.value)}
+                  placeholder="¿Quiénes te deben? Ej: Juan, Franco (opcional)" aria-label="Quiénes te deben" />
+              </>
+            )}
+          </div>
+        )}
+
+        {!(esTarjeta && cuotas > 1) && !divide && (
           <label className="pz-switch">
             <input type="checkbox" checked={repetir} onChange={(e) => setRepetir(e.target.checked)} />
             <span className="pz-switch-pista" aria-hidden="true"><span /></span>

@@ -2,6 +2,9 @@ import { useState } from 'react'
 import { supabase } from './supabaseClient'
 import Icono from './Iconos'
 import { useToast } from './Toast'
+import { leerTema, guardarTema } from './tema'
+
+const TEMAS = [['claro', 'Claro'], ['oscuro', 'Oscuro'], ['auto', 'Automático']]
 
 export default function Perfil({ usuario, onCerrar, onVerTutorial }) {
   const avisar = useToast()
@@ -10,6 +13,7 @@ export default function Perfil({ usuario, onCerrar, onVerTutorial }) {
   const [confirmarBorrado, setConfirmarBorrado] = useState('')
   const [ocupado, setOcupado] = useState(false)
   const [error, setError] = useState(null)
+  const [tema, setTema] = useState(leerTema())
 
   const inicial = (nombre || usuario.email || '?').trim().charAt(0).toUpperCase()
 
@@ -76,6 +80,16 @@ export default function Perfil({ usuario, onCerrar, onVerTutorial }) {
             <input id="p-clave" className="pz-input" type="password" value={clave} onChange={(e) => setClave(e.target.value)} placeholder="Contraseña nueva" autoComplete="new-password" />
             <button type="button" className="pz-btn pz-btn-claro" onClick={cambiarClave} disabled={ocupado || !clave}>Cambiar</button>
           </div>
+        </div>
+
+        <div className="pz-campo">
+          <span className="pz-label">Apariencia</span>
+          <div className="pz-seg pz-seg-3">
+            {TEMAS.map(([k, l]) => (
+              <button key={k} type="button" className={tema === k ? 'on' : ''} onClick={() => { setTema(k); guardarTema(k) }}>{l}</button>
+            ))}
+          </div>
+          <span className="pz-sub">Automático usa el mismo modo que tu celu o tu compu.</span>
         </div>
 
         {error && <p className="pz-error">{error}</p>}

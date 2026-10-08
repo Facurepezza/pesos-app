@@ -1,6 +1,10 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App.jsx'
+import { aplicarTema } from './tema'
+
+// Antes de dibujar la app: modo claro u oscuro
+aplicarTema()
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

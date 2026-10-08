@@ -5,6 +5,8 @@ import Avatar from './Avatar'
 import Icono from './Iconos'
 import { plata, claveMes, mesDesplazado, hoyISO, MESES, MESES_LARGO, MEDIOS, COLORES_CAT, traerCotizaciones, pesosSuscripcion, mensualSuscripcion } from './utils'
 
+const DIAS_PLURAL = ['domingos', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábados']
+
 // Pantalla de métricas con el diseño nuevo de PESOS
 const VERDE = '#0F4D35'
 const ROJO = '#B4400C'
@@ -99,16 +101,93 @@ export default function Dashboard({ usuarioId, refreshKey, oculto = false, onVol
 
     const grandes = [...gMes].sort((x, y) => Number(y.monto) - Number(x.monto)).slice(0, 5)
 
+    // ---------- Lo que dice tu mes: frases armadas con tus números ----------
+    const frases = []
+    const mesAnt = MESES_LARGO[a.mes]
+    const fmt = (n) => plata(n)
+    const pctTxt = (x) => `${Math.abs(x).toFixed(0)}%`
+
+    // 1) Comparado con el mes pasado a esta misma altura
+    if (esMesActual) {
+      const hastaHoy = hoy.getDate()
+      const antMismo = sumar(delMesDe(gastos, kAnt).filter((x) => Number(String(x.fecha).slice(8, 10)) <= hastaHoy))
+      if (antMismo > 0 && total > 0) {
+        const dif = ((total - antMismo) / antMismo) * 100
+        if (Math.abs(dif) >= 5) {
+          const veces = total / antMismo
+          const cuanto = veces >= 2 ? `${veces.toFixed(1).replace('.', ',').replace(',0', '')} veces más` : `un ${pctTxt(dif)} ${dif > 0 ? 'más' : 'menos'}`
+          frases.push({
+            tono: dif > 0 ? 'mal' : 'bien',
+            texto: `A esta altura de ${mesAnt} llevabas ${fmt(antMismo)}. Ahora vas ${fmt(total)}, ${cuanto}.`,
+          })
+        }
+      }
+    }
+
+    // 2) La categoría que más cambió contra el mes pasado
+    const cambios = Object.keys({ ...cats, ...catsAnt })
+      .map((n) => ({ n, ahora: cats[n] || 0, antes: catsAnt[n] || 0 }))
+      .filter((c) => c.antes > 0 && c.ahora > 0 && Math.abs(c.ahora - c.antes) >= 5000)
+      .map((c) => ({ ...c, pct: ((c.ahora - c.antes) / c.antes) * 100 }))
+      .filter((c) => Math.abs(c.pct) >= 15)
+      .sort((x, y) => Math.abs(y.ahora - y.antes) - Math.abs(x.ahora - x.antes))
+    if (cambios[0]) {
+      const c = cambios[0]
+      frases.push(c.pct > 0
+        ? { tono: 'mal', texto: `Gastaste ${pctTxt(c.pct)} más en ${c.n} que en ${mesAnt} (${fmt(c.ahora - c.antes)} más).` }
+        : { tono: 'bien', texto: `Bien ahí: gastaste ${pctTxt(c.pct)} menos en ${c.n} que en ${mesAnt}.` })
+    }
+
+    // 3) Lo que más repetiste
+    const veces = {}
+    gMes.filter((x) => x.descripcion).forEach((x) => {
+      const n = x.descripcion.trim()
+      veces[n] = veces[n] || { n, cant: 0, monto: 0 }
+      veces[n].cant += 1
+      veces[n].monto += Number(x.monto)
+    })
+    const repetido = Object.values(veces).filter((v) => v.cant >= 3).sort((x, y) => y.cant - x.cant || y.monto - x.monto)[0]
+    if (repetido) frases.push({ tono: 'info', texto: `Lo que más repetiste fue ${repetido.n}: ${repetido.cant} veces, ${fmt(repetido.monto)} en total.` })
+
+    // 4) El día de la semana que más gastás
+    if (gMes.length >= 6) {
+      const porDiaSemana = Array(7).fill(0)
+      gMes.forEach((x) => { porDiaSemana[new Date(String(x.fecha) + 'T00:00:00').getDay()] += Number(x.monto) })
+      const max = Math.max(...porDiaSemana)
+      const i = porDiaSemana.indexOf(max)
+      if (max / total >= 0.25) frases.push({ tono: 'info', texto: `Los ${DIAS_PLURAL[i]} es cuando más gastás: ${fmt(max)} este mes.` })
+    }
+
+    // 5) Cuánto se llevan las suscripciones
+    if (ingMes > 0 && fijoMensual > 0) {
+      const p = (fijoMensual / ingMes) * 100
+      frases.push({ tono: p > 20 ? 'mal' : 'info', texto: `Tus suscripciones se llevan el ${p.toFixed(0)}% de lo que entró (${fmt(fijoMensual)} por mes).` })
+    }
+
+    // 6) Cómo venís ahorrando
+    if (pctAhorro !== null) {
+      if (balance < 0) frases.push({ tono: 'mal', texto: `Este mes salió más de lo que entró: ${fmt(Math.abs(balance))} de diferencia.` })
+      else if (pctAhorro >= 20) frases.push({ tono: 'bien', texto: `Venís guardando el ${pctAhorro.toFixed(0)}% de lo que entró. ¡Seguí así!` })
+    }
+
+    // 7) Ticket promedio
+    if (gMes.length >= 5) frases.push({ tono: 'info', texto: `En promedio, cada gasto fue de ${fmt(total / gMes.length)}.` })
+
     return {
       esMesActual, total, ingMes, balance, pctAhorro, variacion, porDia, aEsteRitmo, diasMes,
       pendientes: sumar(pendientes.map((x) => ({ monto: pesosSuscripcion(x, cot) }))), cantPendientes: pendientes.length,
-      fijoMensual, cantSubs: subs.length, categorias, mediosArr, evolucion, grandes, cantidad: gMes.length,
+      fijoMensual, cantSubs: subs.length, categorias, mediosArr, evolucion, grandes, cantidad: gMes.length, frases: frases.slice(0, 5),
     }
   }, [gastos, ingresos, subs, sel, cot]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const esFuturo = claveMes(sel.anio, sel.mes) >= claveMes(hoy.getFullYear(), hoy.getMonth())
   const gastadoPct = d.ingMes > 0 ? Math.min(100, (d.total / d.ingMes) * 100) : 0
   const p = (n) => plata(n, oculto)
+  // Colores del gráfico según el modo claro u oscuro
+  const oscuro = typeof document !== 'undefined' && document.documentElement.dataset.tema === 'oscuro'
+  const colorEje = oscuro ? '#9FB2A7' : '#4B5A51'
+  const colorGrilla = oscuro ? '#2A3A31' : '#E1E6DE'
+  const barraIngreso = oscuro ? '#3E9B6E' : VERDE
 
   return (
     <div className="pz-screen">
@@ -161,6 +240,16 @@ export default function Dashboard({ usuarioId, refreshKey, oculto = false, onVol
             <div><span>Gastos</span><b>{d.cantidad}</b></div>
           </div>
 
+          {/* Lo que dice tu mes */}
+          {!oculto && d.frases.length > 0 && (
+            <section className="pz-card">
+              <h2 className="pz-h2">Lo que dice tu mes</h2>
+              <ul className="pz-frases">
+                {d.frases.map((f, i) => <li key={i} className={f.tono}>{f.texto}</li>)}
+              </ul>
+            </section>
+          )}
+
           {/* Proyección del mes */}
           {d.esMesActual && d.total > 0 && (
             <section className="pz-card pz-metrica-proy">
@@ -194,7 +283,7 @@ export default function Dashboard({ usuarioId, refreshKey, oculto = false, onVol
                         <b>{c.nombre}</b>
                         <span>
                           {c.pct.toFixed(0)}% del total
-                          {c.vsAnt !== null && (
+                          {c.vsAnt !== null && Math.abs(c.vsAnt) >= 1 && (
                             <em className={c.vsAnt > 0 ? 'pz-sube' : 'pz-baja'}> · {c.vsAnt > 0 ? '▲' : '▼'} {Math.abs(c.vsAnt).toFixed(0)}%</em>
                           )}
                         </span>
@@ -240,19 +329,19 @@ export default function Dashboard({ usuarioId, refreshKey, oculto = false, onVol
           <section className="pz-card">
             <h2 className="pz-h2">Últimos 6 meses</h2>
             <div className="pz-leyenda pz-leyenda-fila">
-              <div><i style={{ background: VERDE }} /><span>Ingresos</span></div>
+              <div><i style={{ background: barraIngreso }} /><span>Ingresos</span></div>
               <div><i style={{ background: ROJO }} /><span>Gastos</span></div>
             </div>
             <ResponsiveContainer width="100%" height={210}>
               <BarChart data={d.evolucion} margin={{ top: 6, right: 0, left: 0, bottom: 0 }} barGap={3}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E1E6DE" />
-                <XAxis dataKey="mes" tickLine={false} axisLine={false} tick={{ fontSize: 12, fontFamily: 'Manrope', fill: '#4B5A51' }} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={colorGrilla} />
+                <XAxis dataKey="mes" tickLine={false} axisLine={false} tick={{ fontSize: 12, fontFamily: 'Manrope', fill: colorEje }} />
                 <YAxis hide={oculto} width={44} tickLine={false} axisLine={false}
                   tickFormatter={(v) => (v >= 1000000 ? `${(v / 1000000).toFixed(1)}M` : `${Math.round(v / 1000)}k`)}
-                  tick={{ fontSize: 11, fontFamily: 'Manrope', fill: '#4B5A51' }} />
-                <Tooltip formatter={(v) => p(v)} cursor={{ fill: 'rgba(15,77,53,.06)' }}
-                  contentStyle={{ borderRadius: 12, border: '1px solid #E1E6DE', fontFamily: 'Manrope', fontSize: 13 }} />
-                <Bar dataKey="Ingresos" fill={VERDE} radius={[6, 6, 0, 0]} />
+                  tick={{ fontSize: 11, fontFamily: 'Manrope', fill: colorEje }} />
+                <Tooltip formatter={(v) => p(v)} cursor={{ fill: oscuro ? 'rgba(255,255,255,.05)' : 'rgba(15,77,53,.06)' }}
+                  contentStyle={{ borderRadius: 12, border: `1px solid ${colorGrilla}`, fontFamily: 'Manrope', fontSize: 13, background: oscuro ? '#15201B' : '#fff', color: oscuro ? '#E6EEE9' : '#0E1A14' }} />
+                <Bar dataKey="Ingresos" fill={barraIngreso} radius={[6, 6, 0, 0]} />
                 <Bar dataKey="Gastos" fill={ROJO} radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>

@@ -376,3 +376,129 @@ html { -webkit-text-size-adjust: 100%; }
 .pz-tuto-botones { display: flex; gap: 10px; margin-top: 4px; }
 .pz-tuto-botones .pz-btn-claro { width: 56px; flex-shrink: 0; }
 .pz-tuto-botones .pz-btn-primario { flex: 1; }
+/* ===== Parte 6: carga rápida, por día, accesos, metas, me deben, calendario ===== */
+:root { --superficie: #fff; --superficie-2: #F7F9F5; --acento: var(--verde); }
+
+/* Carga rápida */
+.pz-rapido { display: flex; align-items: center; gap: 10px; background: #EAF6C9; border: 1.5px solid #D4EA9E; border-radius: 14px; padding: 0 12px; min-height: 46px; color: #3B5208; }
+.pz .pz-rapido input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; margin: 0; padding: 0; min-height: 44px; font: 600 14px var(--texto); color: var(--tinta); box-shadow: none; width: auto; }
+.pz .pz-rapido input::placeholder { color: #5B6B3A; font-weight: 500; }
+.pz-rapido:focus-within { border-color: #9BC23B; }
+
+/* Ver en dólares */
+.pz .pz-vista { display: inline-flex; margin: 0; padding: 3px; width: auto; border: 0; border-radius: 999px; background: rgba(255,255,255,.12); cursor: pointer; box-shadow: none; }
+.pz-vista span { font: 800 11.5px var(--texto); color: #CFE3D8; padding: 4px 9px; border-radius: 999px; }
+.pz-vista span.on { background: var(--lima); color: var(--verde-osc); }
+.pz-hero-badge-sola { align-self: flex-start; margin-top: -8px; }
+.pz-hero-nota { font-size: 11.5px; color: #CFE3D8; margin-top: -6px; }
+
+/* ¿Cuánto puedo gastar por día? */
+.pz-diario { gap: 10px; border: 1.5px solid #D4EA9E; }
+.pz-diario.mal { border-color: #F2C9B4; background: #FFF4EC; }
+.pz-diario-top { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; }
+.pz-diario-top > div { display: flex; flex-direction: column; gap: 2px; }
+.pz-diario-top strong { font: 800 30px/1 var(--display); letter-spacing: -.5px; color: var(--tinta); }
+.pz-diario-hoy { align-items: flex-end; text-align: right; }
+.pz-diario-hoy b { font: 700 17px var(--display); color: var(--tinta); }
+.pz-diario .pz-progreso { height: 8px; }
+.pz-diario .pz-progreso div.pasado { background: var(--rojo); }
+.pz-diario-alerta { font: 800 17px var(--display); color: var(--rojo); }
+
+/* Accesos rápidos */
+.pz-accesos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.pz .pz-acceso { margin: 0; width: auto; border: 0; background: var(--superficie); border-radius: 18px; padding: 12px 10px; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; text-align: left; cursor: pointer; box-shadow: none; color: var(--tinta); font-family: var(--texto); }
+.pz-acceso-ico { width: 36px; height: 36px; border-radius: 12px; background: #E7F1EB; color: var(--verde); display: flex; align-items: center; justify-content: center; margin-bottom: 4px; }
+.pz-acceso b { font-size: 14px; }
+.pz-acceso small { font-size: 11.5px; color: var(--gris); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+
+/* Hojas: tarjetas grises y mini resumen */
+.pz-card.pz-card-gris { background: var(--superficie-2); }
+.pz-mini-hero { background: var(--verde); color: #fff; border-radius: 20px; padding: 16px 18px; display: flex; flex-direction: column; gap: 2px; }
+.pz-mini-hero span { font-size: 12.5px; color: #CFE3D8; }
+.pz-mini-hero b { font: 800 30px var(--display); letter-spacing: -.5px; }
+.pz-mini-hero small { font-size: 12px; color: var(--lima); font-weight: 700; }
+
+/* Metas */
+.pz-meta { gap: 10px; }
+.pz-meta-num { display: flex; align-items: baseline; gap: 6px; }
+.pz-meta-num strong { font: 800 22px var(--display); color: var(--tinta); }
+.pz-meta-num span { font-size: 13px; color: var(--gris); flex: 1; }
+.pz-meta-num em { font-style: normal; font: 800 15px var(--display); color: var(--verde); }
+.pz-meta-botones { display: grid; grid-template-columns: 1fr 1fr 1.3fr; gap: 8px; }
+
+/* Lo que dice tu mes */
+.pz-frases { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.pz-frases li { position: relative; padding: 10px 12px 10px 34px; border-radius: 14px; background: var(--superficie-2); font-size: 14px; line-height: 1.45; color: var(--tinta); }
+.pz-frases li::before { content: ''; position: absolute; left: 13px; top: 15px; width: 10px; height: 10px; border-radius: 50%; background: #6B7DD6; }
+.pz-frases li.bien::before { background: var(--positivo); }
+.pz-frases li.mal::before { background: var(--rojo); }
+
+/* Calendario */
+.pz-cal-mes { font: 800 17px var(--display); text-transform: capitalize; color: var(--tinta); }
+.pz-cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; transition: opacity .15s; }
+.pz-cal.cargando { opacity: .4; }
+.pz-cal-cab { text-align: center; font-size: 11px; font-weight: 800; color: var(--gris); padding: 4px 0; }
+.pz .pz-cal-dia { margin: 0; width: auto; aspect-ratio: 1; min-height: 40px; border: 0; border-radius: 12px; background: var(--superficie-2); color: var(--tinta); font: 700 13.5px var(--texto); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; cursor: pointer; box-shadow: none; padding: 0; }
+.pz .pz-cal-dia.pasado { opacity: .5; }
+.pz .pz-cal-dia.hoy { outline: 2px solid var(--verde); outline-offset: -2px; }
+.pz .pz-cal-dia.on { background: var(--verde); color: #fff; opacity: 1; }
+.pz-cal-dia i, .pz-cal-leyenda em { display: flex; gap: 2px; height: 6px; }
+.pz-cal-dia em, .pz-cal-leyenda em { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+em.sale { background: var(--rojo); }
+em.entra { background: var(--positivo); }
+em.aviso { background: #D99A1E; }
+em.info { background: #6B7DD6; }
+.pz-cal-dia.on em { box-shadow: 0 0 0 1.5px #fff; }
+.pz-cal-leyenda { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; color: var(--gris); font-weight: 600; }
+.pz-cal-leyenda span { display: inline-flex; align-items: center; gap: 5px; }
+@media (prefers-reduced-motion: reduce) { .pz-cal { transition: none; } }
+
+/* ===== Modo oscuro ===== */
+:root[data-tema="oscuro"] {
+  color-scheme: dark;
+  --fondo: #0B1511; --superficie: #14201A; --superficie-2: #1B2922;
+  --tinta: #E6EEE9; --gris: #9FB2A7; --linea: #2A3A31;
+  --verde: #12603F; --verde-osc: #0A3424; --acento: #7FD6A5;
+  --positivo: #4ADE80; --rojo: #F0845A;
+}
+[data-tema="oscuro"] body { background: var(--fondo); }
+[data-tema="oscuro"] .pz-card, [data-tema="oscuro"] .pz-sheet, [data-tema="oscuro"] .pz-nav,
+[data-tema="oscuro"] .pz-totales div, [data-tema="oscuro"] .pz-pasos-resumen div, [data-tema="oscuro"] .pz-bienv-form,
+[data-tema="oscuro"] .pz-auto-lista { background: var(--superficie); }
+[data-tema="oscuro"] .pz-sheet .pz-card, [data-tema="oscuro"] .pz-switch, [data-tema="oscuro"] .pz .dash-ticket,
+[data-tema="oscuro"] .pz .dash-bloque { background: var(--superficie-2) !important; }
+[data-tema="oscuro"] .pz .pz-icon-btn, [data-tema="oscuro"] .pz .pz-btn-claro, [data-tema="oscuro"] .pz-cot,
+[data-tema="oscuro"] .pz .pz-chip, [data-tema="oscuro"] .pz .pz-input, [data-tema="oscuro"] .pz-input-logo,
+[data-tema="oscuro"] .pz .pz-monedas button, [data-tema="oscuro"] .pz-buscar, [data-tema="oscuro"] .pz .pz-btn-peligro,
+[data-tema="oscuro"] .pz .pz-cal-dia { background: var(--superficie-2); border-color: var(--linea); color: var(--tinta); }
+[data-tema="oscuro"] .pz .pz-chip.on, [data-tema="oscuro"] .pz .pz-seg button.on, [data-tema="oscuro"] .pz .pz-cal-dia.on { background: var(--verde); border-color: var(--verde); color: #fff; }
+[data-tema="oscuro"] .pz .pz-monedas button.on { background: var(--tinta); color: var(--fondo); }
+[data-tema="oscuro"] .pz-seg, [data-tema="oscuro"] .pz-seg-3 { background: #0F1A15; }
+[data-tema="oscuro"] .pz .pz-seg-3 button.on { background: var(--superficie-2); color: var(--tinta); }
+[data-tema="oscuro"] .pz .pz-link, [data-tema="oscuro"] .pz .pz-btn-claro, [data-tema="oscuro"] .pz-nav .pz-nav-btn.on,
+[data-tema="oscuro"] .pz-meta-num em { color: var(--acento); }
+[data-tema="oscuro"] .pz .pz-btn-peligro { color: var(--rojo); border-color: #5A3324; }
+[data-tema="oscuro"] .pz-nav .pz-nav-btn { color: #8A9C92; }
+[data-tema="oscuro"] .pz-sheet-manija, [data-tema="oscuro"] .pz-pasos-puntos span:not(.on) { background: #34463C; }
+[data-tema="oscuro"] .pz-sheet-fondo { background: rgba(0,0,0,.6); }
+[data-tema="oscuro"] .pz-avatar-logo { background: #F2F4EF; border-color: transparent; }
+[data-tema="oscuro"] .pz-progreso, [data-tema="oscuro"] .pz-pres-barra, [data-tema="oscuro"] .pz-switch-pista { background: #2A3A31; }
+[data-tema="oscuro"] .pz-ok, [data-tema="oscuro"] .pz-badge.ok { background: #173A28; color: #8FE0B0; }
+[data-tema="oscuro"] .pz-error, [data-tema="oscuro"] .pz-badge.urg, [data-tema="oscuro"] .pz-error-carga-ico { background: #3D1F14; color: #FFA982; }
+[data-tema="oscuro"] .pz-badge.prox { background: #3A2E0E; color: #F5CB6A; }
+[data-tema="oscuro"] .pz-pres-txt.cerca { color: #F5CB6A; }
+[data-tema="oscuro"] .pz-badge.pz-badge-auto { background: #2B3A10; color: #C8F169; }
+[data-tema="oscuro"] .pz-tag { background: #1D2A45; color: #A9C1FF; }
+[data-tema="oscuro"] .pz-tag.pz-tag-anual { background: #33224A; color: #D6B8FF; }
+[data-tema="oscuro"] .pz-alerta, [data-tema="oscuro"] .pz-diario.mal { background: #2E1C12; border-color: #5A3324; }
+[data-tema="oscuro"] .pz-alerta-txt span { color: #F2B595; }
+[data-tema="oscuro"] .pz-rapido { background: #22300E; border-color: #3B5208; color: var(--lima); }
+[data-tema="oscuro"] .pz .pz-rapido input::placeholder { color: #9AB46A; }
+[data-tema="oscuro"] .pz-diario { border-color: #34461A; }
+[data-tema="oscuro"] .pz-acceso-ico { background: #173A28; color: var(--acento); }
+[data-tema="oscuro"] .pz .pz-auto-lista button.activo, [data-tema="oscuro"] .pz .pz-auto-lista button:hover { background: var(--superficie-2); }
+[data-tema="oscuro"] .pz-pasos-botones { background: linear-gradient(to top, var(--fondo) 75%, rgba(11,21,17,0)); }
+[data-tema="oscuro"] .pz-peligro { border-color: #5A3324; }
+[data-tema="oscuro"] .pz-cargando { background: var(--fondo); }
+[data-tema="oscuro"] input[type="date"] { color-scheme: dark; }
+[data-tema="oscuro"] .pz .pz-btn-oscuro { background: var(--tinta); color: var(--fondo); }
